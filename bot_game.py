@@ -69,10 +69,9 @@ class Move(object):
 #BUILD:
 #TODO
 
-class Battlefield(object):
+#the battlefield is zero-indexed
+class Battlefield:
     def __init__(self, width, height):
-        super(self, Battlefield).__init__()
-        
         self.width = width
         self.height = height
         
@@ -85,6 +84,19 @@ class Battlefield(object):
         for x in range(self.width):
             for y in range(self.height):
                 self.map[x, y] = list()
+    
+    def get_items(self):
+        return sum(self.map.values(), [])
+    
+    def add_item(self, item):
+        """
+        Add the given item to the map.
+        """
+        
+        if type(item) is Bot:
+            return self.add_bot(item)
+        
+        self.map[item.coords].append(item)
     
     def add_bot(self, bot):
         if bot in self.bots:
@@ -174,7 +186,10 @@ class Battlefield(object):
             attacks = [m for m in moves if m[1].move_type == MoveType.ATTACK]
             movements = [m for m in moves if m[1].move_type == MoveType.MOVE]
             builds = [m for m in moves if m[1].move_type == MoveType.BUILD]
-        
+            
+            self.process_attacks(attacks)
+            self.process_moves(movements)
+            self.process_builds(builds)
         
 
 class Bot(object):
@@ -205,8 +220,6 @@ class Bot(object):
 
 class EnergySource(object):
     def __init__(self, coords,amount):
-        super(self, EnergySource).__init__()
-        
         self.coords = coords
         self.amount = amount
     
