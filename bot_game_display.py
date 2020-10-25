@@ -95,7 +95,20 @@ class BotGameDisplayFrame(tk.Frame):
             self.canvas.create_text((x+0.5)*self.square_size + 1,
                                     (y+0.5)*self.square_size + 1,
                                     font=('Consolas', 15),
-                                    text=str(es.amount))
+                                    text=str(es.amount),
+                                    tags='ENERGY_SOURCE')
+    
+    def draw_bots(self):
+        #Delete old bots
+        self.canvas.delete('BOT')
+        
+        bots = filter(lambda x: type(x) is bot_game.BOT,
+                      self.battlefield.get_items())
+        
+        for bot in bots:
+            x, y = bot.coords
+            
+            
     
     def update_frame(self):
         pass
