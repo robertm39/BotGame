@@ -41,8 +41,11 @@ def coords_within_distance(coords,
     return filter_in_bounds_coords(result, min_x, max_x, min_y, max_y)
 
 class MoveType(Enum):
-    MOVE = 'MOVE'
+    GIVE_ENERGY = 'GIVE_ENERGY'
+    GIVE_LIFE = 'GIVE_LIFE'
+    HEAL = 'HEAL'
     ATTACK = 'ATTACK'
+    MOVE = 'MOVE'
     BUILD = 'BUILD'
 
 class Direction(Enum):
@@ -60,11 +63,19 @@ class Move(object):
         for name, val in kwargs.items():
             self.__setattr__(name, val)
 
-#MOVE:
+#GIVE ENERGY:
 #    direction: Direction
+
+#GIVE LIFE:
+#    direction: Direction
+
+#HEAL
 
 #ATTACK:
 #    target_coords: (int, int)
+
+#MOVE:
+#    direction: Direction
 
 #BUILD:
 #TODO
@@ -142,14 +153,41 @@ class Battlefield:
             bot.give_view(view)
     
     def get_bots_moves(self):
-        return {bot:bot.get_moves() for bot in self.bots}
+        """
+        Return all the bots' moves.
+        
+        Return:
+            moves: {MoveType: {Bot: [Move]}}
+        """
+        all_moves = {bot:bot.get_moves() for bot in self.bots}
+        result = {t:{} for t in MoveType}
+        
+        for bot, moves in all_moves.items():
+            for move_type in moves:
+                result[move_type][bot] = moves[move_type]
+        
+        return result
     
     def get_bots_from_movement_steps(self):
         bfs = self.bots_from_speeds
         return {speed:bfs[speed].copy() for speed in bfs}
     
     def process_attacks(self, attacks):
-        for bot, move in attacks:
+        """
+        Process all the attack moves given.
+        
+        Parameters:
+            attacks {bot: [move]}: All the moves.
+        """
+        for bot, moves in attacks.items:
+            if not moves:
+                print('empy attack order: {}'.format(bot))
+                continue
+            
+            move = moves[0]
+            
+            #This stuff will be put into an effect later
+            #and not handled in this method
             tc = move.target_coords
             target_bot_list = [e for e in self.map[tc] if type(e) is Bot]
             
@@ -174,23 +212,13 @@ class Battlefield:
     def advance(self):
         self.give_bots_info()
         
-        moves_from_bots = self.get_bots_moves()
-        bots_from_movement_steps = self.get_bots_from_movement_steps()
+        moves = self.get_bots_moves()
         
-        #The highest speed among the bots
-        current_step = max(bots_from_movement_steps)
-        while bots_from_movement_steps:
-            current_bots = bots_from_movement_steps[current_step]
-            moves = [(bot, moves_from_bots[bot][0]) for bot in current_bots]
+        for move_type, moves_from_bots in moves.items():
+            print(move_type)
+            if move_type == MoveType.MOVE:
+                self.
             
-            attacks = [m for m in moves if m[1].move_type == MoveType.ATTACK]
-            movements = [m for m in moves if m[1].move_type == MoveType.MOVE]
-            builds = [m for m in moves if m[1].move_type == MoveType.BUILD]
-            
-            self.process_attacks(attacks)
-            self.process_moves(movements)
-            self.process_builds(builds)
-        
 
 class Bot(object):
     def __init__(self,
@@ -217,6 +245,15 @@ class Bot(object):
         
         for stat, val in special_stats.items():
             self.__setattr__(stat, val)
+    
+    def get_moves():
+        """
+        Return the bot's moves.
+        
+        Return:
+            moves: {MoveType -> [Move]}
+        """
+        pass
 
 class EnergySource(object):
     def __init__(self, coords,amount):

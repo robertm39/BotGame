@@ -70,15 +70,11 @@ class BotGameDisplayFrame(tk.Frame):
                                 self.battlefield.get_items())
         energy_sources = list(energy_sources)
         
-        # print('There are {} energy sources'.format(len(energy_sources)))
-        
         #This always makes an odd number
         proportion = 0.85
         
         size = round((self.square_size - 1) * proportion / 2) * 2 + 1
         upper_left = self.square_size - size
-        
-        # self.canvas.create_oval(5, 5, 20, 20)
         
         for es in energy_sources:
             # break
@@ -105,10 +101,28 @@ class BotGameDisplayFrame(tk.Frame):
         bots = filter(lambda x: type(x) is bot_game.BOT,
                       self.battlefield.get_items())
         
+        #This always makes an odd number
+        proportion = 0.85
+        
+        size = round((self.square_size - 1) * proportion / 2) * 2 + 1
+        upper_left = self.square_size - size
+        
         for bot in bots:
             x, y = bot.coords
             
+            self.canvas.create_oval(x*self.square_size + upper_left + 1,
+                                    y*self.square_size + upper_left + 1,
+                                    x*self.square_size + size + 1,
+                                    y*self.square_size + size + 1,
+                                    outline='black',
+                                    fill='lightgray',
+                                    tags='ENERGY_SOURCE')
             
+            self.canvas.create_text((x+0.5)*self.square_size + 1,
+                                    (y+0.5)*self.square_size + 1,
+                                    font=('Consolas', 15),
+                                    text=str(es.energy),
+                                    tags='ENERGY_SOURCE')
     
     def update_frame(self):
         pass
