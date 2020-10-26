@@ -6,11 +6,8 @@ Created on Wed Oct 14 12:46:26 2020
 """
 
 from enum import Enum
-from random import randint
 
-def get_random_damage(power):
-    #The sum of x {0, 1} dice, where x = power
-    return sum([randint(0, 1) for _ in range(power)])
+import effects as eff
 
 def filter_in_bounds_coords(coords_list, min_x, max_x, min_y, max_y):
     result = list()
@@ -80,6 +77,20 @@ class Move(object):
 #BUILD:
 #TODO
 
+def cell_in_direction(coords, direction):
+    x, y = coords
+    
+    if direction == Direction.LEFT:
+        return (x-1, y)
+    elif direction == Direction.RIGHT:
+        return (x+1, y)
+    elif direction == Direction.UP:
+        return (x, y-1)
+    elif direction == Direction.DOWN:
+        return (x, y+1)
+    else:
+        raise ValueError('direction: {}'.format(direction))        
+
 #the battlefield is zero-indexed
 class Battlefield:
     def __init__(self, width, height):
@@ -91,6 +102,16 @@ class Battlefield:
         self.bots = list()
         self.bots_from_speeds = dict()
         
+        self.effects = list()
+        self.ready_effects = list()
+        
+        self.process_funcs = {MoveType.GIVE_ENERGY: self.process_give_energys,
+                              MoveType.GIVE_LIFE: self.process_give_lifes,
+                              MoveType.HEAL: self.process_heals,
+                              MoveType.ATTACK: self.process_attacks,
+                              MoveType.MOVE: self.process_moves,
+                              MoveType.BUILD: self.process_builds}
+        
         #Initialize map to an empty list everywhere
         for x in range(self.width):
             for y in range(self.height):
@@ -98,6 +119,9 @@ class Battlefield:
     
     def get_items(self):
         return sum(self.map.values(), [])
+    
+    def get_bots(self):
+        return self.bots.copy()
     
     def add_item(self, item):
         """
@@ -172,37 +196,206 @@ class Battlefield:
         bfs = self.bots_from_speeds
         return {speed:bfs[speed].copy() for speed in bfs}
     
-    def process_attacks(self, attacks):
+    def test_energys_all_positive(self):
+        for bot in self.bots:
+            if bot.energy < 0:
+                raise ValueError('bot.energy: {}'.format(bot.energy))
+    
+    def ready_effects(self):
+        for effect in self.effects:
+            if effect in self.ready_effects:
+                continue
+            
+            effect.new_turn(self)
+            
+            if effect.ready():
+                self.ready_effects.append(effect)
+    
+    def register_effect(self, effect):
+        self.effects.append(effect)
+        if effect.ready():
+            self.ready_effects.append(effect)
+    
+    def resolve_effects(self):
+        for effect in self.ready_effects:
+            effect.resolve(self)
+    
+    def process_give_energys(self, moves_from_bots):
         """
-        Process all the attack moves given.
+        Process the GIVE_ENERGY moves.
         
         Parameters:
-            attacks {bot: [move]}: All the moves.
+            moves_from_bots {Bot: [Move]}: The GIVE_ENERGY moves to process.
         """
-        for bot, moves in attacks.items:
+        
+        #TODO add check for whether the bot can give energy
+        #All the bots that might end up with negative total energy
+        possible_negatives = []
+        for bot, moves in moves_from_bots.items():
             if not moves:
-                print('empy attack order: {}'.format(bot))
                 continue
             
             move = moves[0]
             
-            #This stuff will be put into an effect later
-            #and not handled in this method
-            tc = move.target_coords
-            target_bot_list = [e for e in self.map[tc] if type(e) is Bot]
+            t_coords = cell_in_direction(bot.coords, move.direction)
             
-            if target_bot_list:
-                damage = get_random_damage(bot.power)
-                target_bot = target_bot_list[0]
-                target_bot.take_damage(damage)
-                if target_bot.dead():
-                    self.remove_bot(target_bot)
+            targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
+            if not targeted_bots:
+                continue
+            
+            targeted_bot = targeted_bots[0]
+            amount = move.amount
+            
+            #Check whether the transfers were valid later
+            #this allows transfers to be chained
+            bot.energy -= amount
+            targeted_bot.energy += amount
+            
+            if bot.energy < 0:
+                possible_negatives.append(bot)
+        
+        while possible_negatives:
+            bot = possible_negatives[0]
+            del possible_negatives[0]
+            
+            moves = moves_from_bots[bot]
+            if not moves:
+                continue
+            move = moves[0]
+            
+            if bot.energy >= 0:
+                continue
+            
+            t_coords = cell_in_direction(bot.coords, move.direction)
+            
+            targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
+            if not targeted_bots:
+                continue
+            
+            targeted_bot = targeted_bots[0]
+            amount = move.amount
+            
+            #Undo the transfer if the transferring bot ended up with
+            #negative total energy
+            bot.energy += amount
+            targeted_bot.energy -= amount
+            
+            #Now maybe the targeted bot has negative total energy,
+            #so any transfers it did will also need to be undone
+            if targeted_bot.energy < 0:
+                possible_negatives.append(targeted_bot)
+        
+        self.test_energys_all_positive()
+    
+    def process_give_lifes(self, moves_from_bots):
+        """
+        Process all the GIVE_LIFE orders.
+        
+        Parameters:
+            moves_from_bots {Bot: [Move]}: All the GIVE_LIFE orders.
+        """
+        #TODO add check for whether the bot can give life
+        for bot, moves in moves_from_bots.items():
+            if not moves:
+                continue
+            if bot.energy == 0:
+                continue
+            
+            move = moves[0]
+            
+            t_coords = cell_in_direction(bot.coords, move.direction)
+            
+            targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
+            if not targeted_bots:
+                continue
+            
+            targeted_bot = targeted_bots[0]
+            amount = move.amount
+            
+            #You can only heal by as much energy as you have
+            amount = min(amount, bot.energy)
+            
+            #You can also only heal by as much damage as the healed bot has
+            amount = targeted_bot.increase_hp(amount)
+            
+            bot.energy -= amount
+        
+        self.test_energys_all_positive()
+    
+    def process_heals(self, moves_from_bots):
+        """
+        Process all the HEAL orders given.
+        
+        Parameters:
+            moves_from_bots {Bot: [Move]}: All the HEAL orders to process.
+        """
+        #TODO add check for whether the bot can heal
+        
+        for bot, moves in moves_from_bots.items():
+            if not moves:
+                continue
+            if bot.energy == 0:
+                continue
+            
+            move = moves[0]
+            amount = move.amount
+            
+            #You can only heal by how much energy you have,
+            #and also only by how much damage you have
+            amount = min(amount, bot.energy, bot.max_hp - bot.hp)
+            bot.increase_hp(amount)
+            bot.energy -= amount
+        
+        self.test_energys_all_positive()
+    
+    def process_attacks(self, moves_from_bots):
+        """
+        Process all the attack moves given.
+        
+        Parameters:
+            attacks {Bot: [Move]}: All the ATTACK moves to process.
+        """
+        #TODO check for whether bot can attack
+        speeds = list(set(map(list(moves_from_bots), lambda b: b.speed)))
+        speeds.sort(reverse=True)
+        print('speeds: {}'.format(speeds))
+        
+        bots_from_speeds = {s:[] for s in speeds}
+        for bot in self.bots:
+            bots_from_speeds[bot.speed].append(bot)
+        
+        for speed in speeds:
+            dead_bots = list()
+            for bot in bots_from_speeds[speed]:
+                if not bot in self.bots:
+                    continue
+                
+                moves = moves_from_bots[bot]
+                if not moves:
+                    continue
+                
+                move = moves[0]
+                
+                tc = move.target_coords
+                
+                attack_effect = eff.AttackEffect(bot, bot.speed, bot.power, tc)
+                self.register_effect(attack_effect)
+            
+            self.resolve_effects()
+            
+            for bot in dead_bots:
+                self.remove_bot(bot)
     
     def process_moves(self, moves):
         """
         Process the movement orders.
         Algorithm: first assume all succeed (except for head-on ones), and then
         undo unsuccessfull moves.
+        
+        Bots with higher speed have priority for movement.
+        
+        Parameters:
+            moves {Bot: [Move]}
         """
         moves_from_bots = {m[0]:m[1] for m in moves}
         moving_bots = list(moves_from_bots)
@@ -210,14 +403,15 @@ class Battlefield:
         # new_bots_from_coords
     
     def advance(self):
+        self.ready_effects()
         self.give_bots_info()
         
         moves = self.get_bots_moves()
         
         for move_type, moves_from_bots in moves.items():
             print(move_type)
-            if move_type == MoveType.MOVE:
-                self.
+            
+            self.process_funcs[move_type](moves_from_bots)
             
 
 class Bot(object):
@@ -234,6 +428,7 @@ class Bot(object):
                  **special_stats):
         
         self.coords = coords
+        self.max_hp = hp
         self.hp = hp
         self.power = power
         self.attack_range = attack_range
@@ -246,7 +441,86 @@ class Bot(object):
         for stat, val in special_stats.items():
             self.__setattr__(stat, val)
     
-    def get_moves():
+    def increase_hp(self, amount):
+        """
+        Increase the bot.hp by the nonnegative amount given.
+        The bot.hp will remain <= bot.max_hp.
+        
+        Parameters:
+            amount int: The amount to increase hp by. Must be nonnegative.
+        
+        Return:
+            int: The nonnegative amount that bot.hp actually increase by.
+        """
+        if amount < 0:
+            raise ValueError('amount: {}'.format(amount))
+        
+        increase = min(self.hp + amount, self.max_hp) - self.hp
+        self.hp += increase
+        return increase
+    
+    def decrease_hp(self, amount):
+        """
+        Decrease the bot.hp by the nonnegative amount given.
+        THe bot.hp will remain >= 0.
+        
+        Parameters:
+            amount int: The amount to decrease hp by. Must be nonnegative.
+        
+        Return:
+            int: The nonnegative amount that bot.hp actually decreased by.
+        """
+        if amount < 0:
+            raise ValueError('amount: {}'.format(amount))
+        
+        decrease = min(self.hp, amount)
+        self.hp -= decrease
+        
+        return decrease
+    
+    def change_hp(self, amount):
+        """
+        Change the bot's hp by the given amount.
+        It will remain that 0 <= bot.hp <= bot.max_hp
+        
+        Parameters:
+            amount int: The amount to change hp by.
+        
+        Return:
+            int: The amount that bot.hp actually changed by.
+        """
+        result = self.hp + amount
+        result = max(0, min(self.max_hp, result))
+        change = result - self.hp
+        self.hp = result
+        
+        return change
+    
+    def take_damage(self, amount):
+        """
+        Take the given nonnegative amount of damage.
+        
+        Parameters:
+            amount int: The amount of damage to take. Must be nonnegative.
+        
+        Return:
+            int: The nonnegative amount that bot.hp actually decreased by.
+        """
+        if amount < 0:
+            raise ValueError('amount: {}'.format(amount))
+        
+        return self.decrease_hp(amount)
+    
+    def is_dead(self):
+        """
+        Return whether the bot is dead.
+        
+        Return:
+            boolean: Whether the bot is dead.
+        """
+        return self.hp <= 0
+    
+    def get_moves(self):
         """
         Return the bot's moves.
         
@@ -257,7 +531,7 @@ class Bot(object):
 
 class EnergySource(object):
     def __init__(self, coords,amount):
-        self.coords = coords
+        self.coords = tuple(coords)
         self.amount = amount
     
     def bot_view(self):
