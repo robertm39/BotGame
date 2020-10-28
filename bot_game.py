@@ -51,6 +51,11 @@ class Direction(Enum):
     UP = 'UP'
     DOWN = 'DOWN'
 
+OPPOSITE = {Direction.LEFT:Direction.RIGHT,
+            Direction.RIGHT:Direction.LEFT,
+            Direction.UP:Direction.DOWN,
+            Direction.DOWN:Direction.UP}
+
 class Move(object):
     def __init__(self, move_type, **kwargs):
         super(self, Move).__init__()
@@ -89,7 +94,7 @@ def cell_in_direction(coords, direction):
     elif direction == Direction.DOWN:
         return (x, y+1)
     else:
-        raise ValueError('direction: {}'.format(direction))        
+        raise ValueError('direction: {}'.format(direction))    
 
 #the battlefield is zero-indexed
 class Battlefield:
@@ -154,6 +159,14 @@ class Battlefield:
         
         self.bots.remove(bot)
         self.bots_from_speeds[bot.speed].remove(bot)
+    
+    # def move_item(self, item, new_coords):
+    #     if not item in self.map[item.coords]:
+    #         items = self.map[item.coords]
+    #         raise ValueError('self.map[item.coords]: {}'.format(items))
+        
+    #     self.map[item.coords].remove(item)
+    #     self.map(new_coords).append(item)
     
     def get_visible_coords(self, bot):
         #TODO incorporate line-of-sight checks
@@ -386,7 +399,7 @@ class Battlefield:
             for bot in dead_bots:
                 self.remove_bot(bot)
     
-    def process_moves(self, moves):
+    def process_moves(self, moves_from_bots):
         """
         Process the movement orders.
         Algorithm: first assume all succeed (except for head-on ones), and then
@@ -397,10 +410,117 @@ class Battlefield:
         Parameters:
             moves {Bot: [Move]}
         """
-        moves_from_bots = {m[0]:m[1] for m in moves}
+        
+        #TODO check how many moves a bot can have
+        
+        #For multiple moves:
+        #first do each bot's first move, then each second move, etc.
+        #bots w\ higher speed have priority
+        
+        #For each set of moves:
+        #first, move each bot to the spot it's moving to
+        #then, where two bots are in the same square, undo
+        #one or both moves
+        #continue until no bots are in same square
+        
         moving_bots = list(moves_from_bots)
         
-        # new_bots_from_coords
+        i = 0
+        while(moving_bots):
+            #Only bots that successfully move (the first try) get put here
+            #so the only ones that don't are ones in head-on collisions
+            already_moved = list()
+            
+            not_moving = list()
+            moved_this_time = list()
+            
+            #First move all the bots
+            for bot in moving_bots:
+                moves = moves_from_bots[bot]
+                if not len(moves) >= i:
+                    not_moving.append(bot)
+                    continue
+                
+                move = moves[i]
+                direction = move.direction
+                new_coords = cell_in_direction(bot.coords, direction)
+                
+                #Check if this is a head-on move
+                bots_at = [b for b in self.map[new_coords] if type(b) is Bot]
+                unmoved_at = [b for b in bots_at if not b in already_moved]
+                if(unmoved_at):
+                    #There's an unmoved bot in the destination coords
+                    other_bot = unmoved_at[0]
+                    other_moves = moves_from_bots[other_bot]
+                    if len(other_moves) >= i:
+                        #The bot is about to move
+                        move = other_moves[i]
+                        other_dir = move.direction
+                        
+                        other_dest = cell_in_direction(new_coords, other_dir)
+                        
+                        if other_dest == bot.coords:
+                            #There's a head-on 
+                            #So this movement fails
+                            continue
+                
+                self.set_coords(bot, new_coords)
+                already_moved.append(bot)
+                moved_this_time.append(bot)
+            
+            #We don't need this one to be accurate now
+            #Because I just use moved_this_time to resolve conflicts
+            #But I'll do it anyways
+            for bot in not_moving:
+                moving_bots.remove(bot)
+            
+            #Then undo unsuccessful moves
+            packed_coords = set()
+            for bot in moving_bots:
+                items_at = self.map[bot.coords]
+                bots_at = [b for b in items_at if type(b) is Bot]
+                if(bots_at >= 2):
+                    packed_coords.add(bot.coords)
+            
+            packed_coords = list(packed_coords)
+            while packed_coords:
+                packed_coord = packed_coords[0]
+                del packed_coords[0]
+                
+                items_at = self.map[packed_coord]
+                bots_at = [b for b in items_at if type(b) is Bot]
+                
+                moved_bots = [b for b in bots_at if b in moved_this_time]
+                
+                max_speed = max([b.speed for b in moved_bots])
+                fastest_bots = [b for b in moved_bots if b.speed == max_speed]
+                
+                move_back = moved_bots.copy()
+                if len(fastest_bots) == 1:
+                    fastest_bot = fastest_bots[0]
+                    
+                    #One bot is faster than all the others
+                    #So only move the slower bots back to their original spaces
+                    move_back = [b for b in moved_bots if b != fastest_bot]
+                
+                for bot in move_back:
+                    coords = bot.coords
+                    direction = moves_from_bots[bot][i].direction
+                    old_coords = cell_in_direction(coords, OPPOSITE[direction])
+                    self.set_coords(bot, old_coords)
+                    
+                    #Check if this spot is crowded now
+                    if not coords in packed_coords:
+                        items_at = self.map[old_coords]
+                        bots_at = [b for b in items_at if type(b) is Bot]
+                        if len(bots_at) >= 2:
+                            packed_coords.append(coords)
+                
+            i += 1
+    
+    def process_builds(self, moves_from_bots):
+        #TODO
+        pass
     
     def advance(self):
         self.ready_effects()
@@ -413,7 +533,6 @@ class Battlefield:
             
             self.process_funcs[move_type](moves_from_bots)
             
-
 class Bot(object):
     def __init__(self,
                  coords,
