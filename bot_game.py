@@ -9,14 +9,68 @@ from enum import Enum
 
 import effects as eff
 
-def filter_in_bounds_coords(coords_list, min_x, max_x, min_y, max_y):
-    result = list()
+def is_in_bounds(coords, min_x, max_x, min_y, max_y):
+    """
+    Return whether the given coords are within the given bounds.
     
-    for x, y in coords_list:
-        if min_x <= x <= max_x and min_y <= y <= max_y:
-            result.append((x, y))
+    Parameters:
+        coords (int, int): The coords to check.
+        min_x (int): The minimum x-value allowed.
+        max_x (int): The maximum x-value allowed.
+        min_y (int): The minimum y-value allowed.
+        max_y (int): The maximum y-value allowed.
+    """
+    x, y = coords
     
-    return result
+    if min_x and min_x > x:
+        return False
+    if max_x and max_x < x:
+        return False
+    
+    if min_y and min_y > y:
+        return False
+    if max_y and max_y < y:
+        return False
+    
+    return True
+
+def filter_in_bounds_coords(coordses, min_x, max_x, min_y, max_y):
+    """
+    Return the coords in coords_list within the given bounds.
+    
+    Parameters:
+        coords_list [(int, int)]: The coords to check.
+        min_x (int): The minimum x-value allowed.
+        max_x (int): The maximum x-value allowed.
+        min_y (int): The minimum y-value allowed.
+        max_y (int): The maximum y-value allowed.
+    """
+    return [c for c in coordses if is_in_bounds(c, min_x, max_x, min_y, max_y)]
+    # result = list()
+    
+    # for x, y in coords_list:
+    #     if not is_in_bounds((x, y), min_x, max_x, min_y, max_y):
+    #         continue
+        
+    #     result.append((x, y))
+        
+    #     # if min_x <= x <= max_x and min_y <= y <= max_y:
+    #     #     result.append((x, y))
+    
+    # return result
+
+def distance(coords_1, coords_2):
+    """
+    Return the distance between the two given coords.
+    
+    Parameters:
+        coords_1 (int, int): The first pair of coords.
+        coords_2 (int, int): The second pair of coords.
+    """
+    x_1, y_1 = coords_1
+    x_2, y_2 = coords_2
+    
+    return abs(x_1 - x_2) + abs(y_1 - y_2)
 
 def coords_within_distance(coords,
                            distance,
@@ -24,16 +78,28 @@ def coords_within_distance(coords,
                            max_x=None,
                            min_y=0,
                            max_y=None):
+    """
+    Return all the coords within the given distance of the given coords,
+    as long as they are in the given bounds.
+    
+    Parameters:
+        coords (int, int): The coords to measure distance from.
+        distance (int): The maximum distance.
+        min_x (int): The minimum x-value allowed.
+        max_x (int): The maximum x-value allowed.
+        min_y (int): The minimum y-value allowed.
+        max_y (int): The maximum y-value allowed.
+    """
     result = [coords]
     cx, cy = coords
     for d in range(1, distance+1):
         for x in range(0, d):
             y = d - x
             
-            result.append(cx + x, cy + y)
-            result.append(cx - y, cy + x)
-            result.append(cx - x, cy - y)
-            result.append(cx + y, cy - x)
+            result.append((cx + x, cy + y))
+            result.append((cx - y, cy + x))
+            result.append((cx - x, cy - y))
+            result.append((cx + y, cy - x))
     
     return filter_in_bounds_coords(result, min_x, max_x, min_y, max_y)
 
@@ -56,10 +122,8 @@ OPPOSITE = {Direction.LEFT:Direction.RIGHT,
             Direction.UP:Direction.DOWN,
             Direction.DOWN:Direction.UP}
 
-class Move(object):
+class Move:
     def __init__(self, move_type, **kwargs):
-        super(self, Move).__init__()
-        
         self.move_type = move_type
         
         for name, val in kwargs.items():
@@ -70,8 +134,10 @@ class Move(object):
 
 #GIVE LIFE:
 #    direction: Direction
+#    amount: int
 
 #HEAL
+#    amount: int
 
 #ATTACK:
 #    target_coords: (int, int)
@@ -107,8 +173,8 @@ class Battlefield:
         self.bots = list()
         self.bots_from_speeds = dict()
         
-        self.effects = list()
-        self.ready_effects = list()
+        self.effects_waiting = list()
+        self.effects_ready = list()
         
         self.process_funcs = {MoveType.GIVE_ENERGY: self.process_give_energys,
                               MoveType.GIVE_LIFE: self.process_give_lifes,
@@ -122,6 +188,9 @@ class Battlefield:
             for y in range(self.height):
                 self.map[x, y] = list()
     
+    def at(self, coords):
+        return self.map.get(coords, list())
+    
     def get_items(self):
         return sum(self.map.values(), [])
     
@@ -133,6 +202,9 @@ class Battlefield:
         Add the given item to the map.
         """
         
+        if not item.coords in self.map:
+            raise ValueError('item.coords: {}'.format(item.coords))
+        
         if type(item) is Bot:
             return self.add_bot(item)
         
@@ -143,7 +215,11 @@ class Battlefield:
             print('bot already in self.bots: {}'.format(bot))
             return
             
+        if not bot.coords in self.map:
+            raise ValueError('bot.coords: {}'.format(bot.coords))
+        
         self.bots.append(bot)
+        self.map[bot.coords].append(bot)
         
         speed = bot.speed
         
@@ -158,6 +234,7 @@ class Battlefield:
             return
         
         self.bots.remove(bot)
+        self.map[bot.coords].remove(bot)
         self.bots_from_speeds[bot.speed].remove(bot)
     
     # def move_item(self, item, new_coords):
@@ -169,22 +246,49 @@ class Battlefield:
     #     self.map(new_coords).append(item)
     
     def get_visible_coords(self, bot):
+        """
+        Return the coords visible to the given bot.
+        
+        Parameters:
+            bot [Bot]: The bot to return the visible coords of.
+        """
         #TODO incorporate line-of-sight checks
         return coords_within_distance(bot.coords, bot.sight)
     
     def set_coords(self, item, coords):
+        """
+        Move the item to the given coords, updating both the item's .coords
+        attribute and the map.
+        
+        Parameters:
+            item: The item whose coords to change.
+            coords (int, int): The coords to move the item to.
+        """
+        if not coords in self.map:
+            raise ValueError('coords: {}'.format(coords))
+        
         old_coords = item.coords
+        
+        #Sometimes this will happen if a bot that was destroyed has a movement
+        #It's easier to deal with it here than there
+        if not item in self.at(old_coords):
+            return
+        
         self.map[old_coords].remove(item)
         self.map[coords].append(item)
         item.coords = coords
     
     def give_bots_info(self):
+        """
+        Give all bots their turn's information by calling their give_view()
+        methods.
+        """
         for bot in self.bots:
             visible_coords = self.get_visible_coords(bot)
-            view = map()
+            view = dict()
             for coords in visible_coords:
                 view[coords] = list()
-                for item in self.map[coords]:
+                for item in self.map.get(coords, list()):
                     view[coords].append(item.view())
             
             bot.give_view(view)
@@ -197,41 +301,71 @@ class Battlefield:
             moves: {MoveType: {Bot: [Move]}}
         """
         all_moves = {bot:bot.get_moves() for bot in self.bots}
-        result = {t:{} for t in MoveType}
+        # print('all_moves:')
+        # print(all_moves)
+        # print('')
+        result = {t:dict() for t in MoveType}
+        # print('start:')
+        # print(result)
+        # print('')
         
         for bot, moves in all_moves.items():
+            # print('moves:')
+            # print(moves)
+            # print('')
             for move_type in moves:
                 result[move_type][bot] = moves[move_type]
         
         return result
     
-    def get_bots_from_movement_steps(self):
-        bfs = self.bots_from_speeds
-        return {speed:bfs[speed].copy() for speed in bfs}
-    
     def test_energys_all_positive(self):
+        """
+        Make sure that all bots have positive energy.
+        Raise ValueError if at least one bot does not have positive energy.
+        """
         for bot in self.bots:
             if bot.energy < 0:
                 raise ValueError('bot.energy: {}'.format(bot.energy))
     
     def ready_effects(self):
-        for effect in self.effects:
-            if effect in self.ready_effects:
-                continue
+        """
+        For all effects whose ready() method returns True, put them in the
+        effects_ready list.
+        """
+        readied = list()
+        for effect in self.effects_waiting:
             
             effect.new_turn(self)
             
             if effect.ready():
-                self.ready_effects.append(effect)
+                readied.append(effect)
+                self.effects_ready.append(effect)
+        
+        for effect in readied:
+            self.effects_waiting.remove(effect)
     
     def register_effect(self, effect):
-        self.effects.append(effect)
+        """
+        Put the given effect in the appropriate effect list.
+        
+        Parameters:
+            effect [Effect]: The effect to register.
+        """
         if effect.ready():
-            self.ready_effects.append(effect)
+            self.effects_ready.append(effect)
+        else:
+            self.effects_waiting.append(effect)
     
     def resolve_effects(self):
-        for effect in self.ready_effects:
+        """
+        Resolve all ready effects.
+        """
+        for effect in self.effects_ready:
             effect.resolve(self)
+        
+        #Now clear those effects away
+        self.effects_ready.clear()
+        
     
     def process_give_energys(self, moves_from_bots):
         """
@@ -368,17 +502,26 @@ class Battlefield:
         Parameters:
             attacks {Bot: [Move]}: All the ATTACK moves to process.
         """
+        # print(moves_from_bots)
+        if not moves_from_bots:
+            return
+        
+        # print('bots:')
+        # print(list(moves_from_bots))
+        # print('')
         #TODO check for whether bot can attack
-        speeds = list(set(map(list(moves_from_bots), lambda b: b.speed)))
-        speeds.sort(reverse=True)
-        print('speeds: {}'.format(speeds))
+        speeds = list(set([b.speed for b in moves_from_bots]))
+        
+        # speeds.sort(reverse=True)
+        # print('speeds: {}'.format(speeds))
         
         bots_from_speeds = {s:[] for s in speeds}
-        for bot in self.bots:
+        # for bot in self.bots:
+        for bot in moves_from_bots:
             bots_from_speeds[bot.speed].append(bot)
         
         for speed in speeds:
-            dead_bots = list()
+            attacked_coords = list()
             for bot in bots_from_speeds[speed]:
                 if not bot in self.bots:
                     continue
@@ -390,14 +533,23 @@ class Battlefield:
                 move = moves[0]
                 
                 tc = move.target_coords
+                attacked_coords.append(tc)
                 
-                attack_effect = eff.AttackEffect(bot, bot.speed, bot.power, tc)
+                attack_effect = eff.AttackEffect([bot], bot.speed, bot.power, tc)
                 self.register_effect(attack_effect)
             
             self.resolve_effects()
             
-            for bot in dead_bots:
-                self.remove_bot(bot)
+            #Remove all dead bots
+            for coords in attacked_coords:
+                items = self.at(coords)
+                bots = [i for i in items if type(i) is Bot]
+                if not bots:
+                    continue
+                
+                bot = bots[0]
+                if bot.is_dead():
+                    self.remove_bot(bot)
     
     def process_moves(self, moves_from_bots):
         """
@@ -437,7 +589,8 @@ class Battlefield:
             #First move all the bots
             for bot in moving_bots:
                 moves = moves_from_bots[bot]
-                if not len(moves) >= i:
+                
+                if not len(moves) > i:
                     not_moving.append(bot)
                     continue
                 
@@ -445,14 +598,19 @@ class Battlefield:
                 direction = move.direction
                 new_coords = cell_in_direction(bot.coords, direction)
                 
+                #Check if this is in bounds
+                if not new_coords in self.map:
+                    continue
+                
                 #Check if this is a head-on move
-                bots_at = [b for b in self.map[new_coords] if type(b) is Bot]
+                bots_at = [b for b in self.at(new_coords) if type(b) is Bot]
                 unmoved_at = [b for b in bots_at if not b in already_moved]
                 if(unmoved_at):
                     #There's an unmoved bot in the destination coords
                     other_bot = unmoved_at[0]
-                    other_moves = moves_from_bots[other_bot]
-                    if len(other_moves) >= i:
+                    
+                    other_moves = moves_from_bots.get(other_bot, list())
+                    if len(other_moves) > i:
                         #The bot is about to move
                         move = other_moves[i]
                         other_dir = move.direction
@@ -463,6 +621,10 @@ class Battlefield:
                             #There's a head-on 
                             #So this movement fails
                             continue
+                    else:
+                        #The other bot isn't about to move, so you can't
+                        #move into its square
+                        continue
                 
                 self.set_coords(bot, new_coords)
                 already_moved.append(bot)
@@ -477,9 +639,9 @@ class Battlefield:
             #Then undo unsuccessful moves
             packed_coords = set()
             for bot in moving_bots:
-                items_at = self.map[bot.coords]
-                bots_at = [b for b in items_at if type(b) is Bot]
-                if(bots_at >= 2):
+                items_at = self.at(bot.coords)
+                num_bots_at = len([b for b in items_at if type(b) is Bot])
+                if(num_bots_at >= 2):
                     packed_coords.add(bot.coords)
             
             packed_coords = list(packed_coords)
@@ -487,7 +649,7 @@ class Battlefield:
                 packed_coord = packed_coords[0]
                 del packed_coords[0]
                 
-                items_at = self.map[packed_coord]
+                items_at = self.at(packed_coord)
                 bots_at = [b for b in items_at if type(b) is Bot]
                 
                 moved_bots = [b for b in bots_at if b in moved_this_time]
@@ -511,7 +673,7 @@ class Battlefield:
                     
                     #Check if this spot is crowded now
                     if not coords in packed_coords:
-                        items_at = self.map[old_coords]
+                        items_at = self.at(old_coords)
                         bots_at = [b for b in items_at if type(b) is Bot]
                         if len(bots_at) >= 2:
                             packed_coords.append(coords)
@@ -519,23 +681,35 @@ class Battlefield:
             i += 1
     
     def process_builds(self, moves_from_bots):
+        """
+        Process the build orders.
+        
+        Parameters:
+            moves_from_bots {Bot: [Move]}: All the build orders to process.
+        """
         #TODO
         pass
     
     def advance(self):
+        """
+        Advance the game by one turn.
+        """
         self.ready_effects()
         self.give_bots_info()
         
         moves = self.get_bots_moves()
         
         for move_type, moves_from_bots in moves.items():
-            print(move_type)
+            
+            if not moves_from_bots:
+                continue
             
             self.process_funcs[move_type](moves_from_bots)
             
 class Bot(object):
     def __init__(self,
                  coords,
+                 max_hp,
                  hp,
                  power,
                  attack_range,
@@ -543,19 +717,25 @@ class Bot(object):
                  sight,
                  energy,
                  movement,
+                 player,
+                 message,
                  controller,
                  **special_stats):
         
         self.coords = coords
-        self.max_hp = hp
-        self.hp = hp
+        self.max_hp = max_hp
+        self.hp = max(0, min(self.max_hp, hp))
         self.power = power
         self.attack_range = attack_range
         self.speed = speed
         self.sight = sight
         self.energy = energy
         self.movement = movement
+        self.player = player
+        self.message = message
         self.controller = controller
+        
+        self.special_stats = special_stats.copy()
         
         for stat, val in special_stats.items():
             self.__setattr__(stat, val)
@@ -639,6 +819,47 @@ class Bot(object):
         """
         return self.hp <= 0
     
+    def view(self):
+        # result =  {'type':'Bot',
+        #            'coords':self.coords,
+        #            'max_hp':self.max_hp,
+        #            'power':self.power,
+        #            'attack_range':self.attack_range,
+        #            'speed':self.speed,
+        #            'sight':self.sight,
+        #            'energy':self.energy,
+        #            'movement':self.movement,
+        #            'player':self.player,
+        #            'message':self.message}
+        
+        # result.update(self.special_stats)
+        
+        # return result
+        result = BotView(coords=self.coords,
+                         max_hp=self.max_hp,
+                         hp=self.hp,
+                         power=self.power,
+                         attack_range=self.attack_range,
+                         speed=self.speed,
+                         sight=self.sight,
+                         energy=self.energy,
+                         movement=self.movement,
+                         player=self.player,
+                         message=self.message,
+                         **self.special_stats)
+        
+        return result
+    
+    def give_view(self, view):
+        """
+        Give the controller the view of the battlefield along with this
+        bot's coords.
+        
+        Parameters:
+            view {(int, int): [item.view() return]}: The battlefield view.
+        """
+        self.controller.give_view(view, self.view())
+    
     def get_moves(self):
         """
         Return the bot's moves.
@@ -646,15 +867,73 @@ class Bot(object):
         Return:
             moves: {MoveType -> [Move]}
         """
-        pass
+        return self.controller.get_moves()
 
-class EnergySource(object):
+class BotView:
+    def __init__(self,
+                 coords,
+                 max_hp,
+                 hp,
+                 power,
+                 attack_range,
+                 speed,
+                 sight,
+                 energy,
+                 movement,
+                 player,
+                 message,
+                 **special_stats):
+        
+        self.type = 'Bot'
+        self.coords = coords
+        self.max_hp = max_hp
+        self.hp = max(0, min(self.max_hp, hp))
+        self.power = power
+        self.attack_range = attack_range
+        self.speed = speed
+        self.sight = sight
+        self.energy = energy
+        self.movement = movement
+        self.player = player
+        self.message = message
+        
+        for stat, val in special_stats.items():
+            self.__setattr__(stat, val)
+        
+        self._initialized = True
+    
+    def __setattr__(self, name, val):
+        if hasattr(self, '_initialized'):
+            if name[0] != '_':
+                err_message = 'cannot set attr of view: {} {}'.format(name, val)
+                raise RuntimeError(err_message)
+        
+        self.__dict__[name] = val
+
+class EnergySource:
     def __init__(self, coords,amount):
         self.coords = tuple(coords)
         self.amount = amount
+        self.cached_view = EnergySourceView(self.coords, self.amount)
     
-    def bot_view(self):
+    def view(self):
         """
         Return the object to be given to the bot code.
         """
-        return ('EnergySource', self.coords.copy(), self.amount)
+        return self.cached_view
+        # return ('EnergySource', self.coords, self.amount)
+
+class EnergySourceView:
+    def __init__(self, coords, amount):
+        self.type = 'EnergySource'
+        self.coords = tuple(coords)
+        self.amount = amount
+        self._initialized = True
+    
+    def __setattr__(self, name, val):
+        if hasattr(self, '_initialized'):
+            if name[0] != '_':
+                err_message = 'cannot set attr of view: {} {}'.format(name, val)
+                raise RuntimeError(err_message)
+        
+        self.__dict__[name] = val

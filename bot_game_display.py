@@ -8,6 +8,7 @@ Created on Wed Oct 14 15:39:11 2020
 import tkinter as tk
 
 import bot_game
+import controllers
 
 class BotGameDisplayFrame(tk.Frame):
     def __init__(self, parent, battlefield, square_size=10):
@@ -40,6 +41,7 @@ class BotGameDisplayFrame(tk.Frame):
         
         self.draw_grid()
         self.draw_energy_sources()
+        self.draw_bots()
     
     def draw_grid(self):
         #Delete old grid
@@ -98,7 +100,7 @@ class BotGameDisplayFrame(tk.Frame):
         #Delete old bots
         self.canvas.delete('BOT')
         
-        bots = filter(lambda x: type(x) is bot_game.BOT,
+        bots = filter(lambda x: type(x) is bot_game.Bot,
                       self.battlefield.get_items())
         
         #This always makes an odd number
@@ -116,30 +118,82 @@ class BotGameDisplayFrame(tk.Frame):
                                     y*self.square_size + size + 1,
                                     outline='black',
                                     fill='lightgray',
-                                    tags='ENERGY_SOURCE')
+                                    tags='BOT')
             
             self.canvas.create_text((x+0.5)*self.square_size + 1,
                                     (y+0.5)*self.square_size + 1,
                                     font=('Consolas', 15),
-                                    text=str(es.energy),
-                                    tags='ENERGY_SOURCE')
+                                    text=str(bot.hp),
+                                    tags='BOT')
     
     def update_frame(self):
-        pass
+        self.battlefield.advance()
+        self.draw_bots()
+    
+    def loop(self):
+        self.update_frame()
+        self.frame_num += 1
+        print('Frame {}'.format(self.frame_num))
+        self.after(1000, self.loop)
+    
+    def start_loop(self):
+        self.frame_num = 0
+        print('Frame {}'.format(self.frame_num))
+        self.after(1000, self.loop)
 
 def main():
     root = tk.Tk()
     root.geometry('600x600+400+100')
     
     battlefield = bot_game.Battlefield(10, 10)
+    
     energy_source_1 = bot_game.EnergySource((1, 1), 5)
     energy_source_2 = bot_game.EnergySource((2, 3), 10)
     battlefield.add_item(energy_source_1)
     battlefield.add_item(energy_source_2)
     
-    tk.app = BotGameDisplayFrame(root, battlefield, square_size=50)
+    # ctlr_1 = controllers.WalkController(bot_game.Direction.RIGHT)
+    ctlr_1 = controllers.SeekAndFightController()
+    bot_1 = bot_game.Bot(coords=(2, 2),
+                         max_hp=100,
+                         hp=100,
+                         power=20,
+                         attack_range=1,
+                         speed=1,
+                         sight=5,
+                         energy=10,
+                         movement=1,
+                         player='1',
+                         message='',
+                         controller=ctlr_1)
+    battlefield.add_item(bot_1)
     
+    # ctlr_2 = controllers.WalkController(bot_game.Direction.LEFT)
+    ctlr_2 = controllers.SeekAndFightController()
+    bot_2 = bot_game.Bot(coords=(5, 0),
+                         max_hp=100,
+                         hp=100,
+                         power=20,
+                         attack_range=1,
+                         speed=2,
+                         sight=5,
+                         energy=10,
+                         movement=1,
+                         player='2',
+                         message='',
+                         controller=ctlr_2)
+    battlefield.add_item(bot_2)
+    
+    frame = BotGameDisplayFrame(root, battlefield, square_size=50)
+    tk.app = frame
+    
+    frame.start_loop()
     root.mainloop()
+    
+    # for _ in range(5):
+    #     sleep(1)
+    #     frame.update_frame()
+    #     print('frame')
 
 if __name__ == '__main__':
     main()
