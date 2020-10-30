@@ -26,7 +26,6 @@ class WalkController:
     def get_moves(self):
         move = bg.Move(bg.MoveType.MOVE, direction=self.direction)
         moves = {bg.MoveType.MOVE: [move]}
-        
         return moves
 
 class SeekAndFightController:
@@ -42,6 +41,8 @@ class SeekAndFightController:
         self.owner_view = owner_view
     
     def get_moves(self):
+        # print('energy: {}'.format(self.owner_view.energy))
+        
         coords = self.owner_view.coords
         attack_range = self.owner_view.attack_range
         # in_range_coords = bg.coords_within_distance(coords, attack_range)

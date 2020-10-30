@@ -154,12 +154,12 @@ def main():
     
     # ctlr_1 = controllers.WalkController(bot_game.Direction.RIGHT)
     ctlr_1 = controllers.SeekAndFightController()
-    bot_1 = bot_game.Bot(coords=(2, 2),
-                         max_hp=100,
-                         hp=100,
-                         power=20,
+    bot_1 = bot_game.Bot(coords=(1, 1),
+                         max_hp=1,
+                         hp=1,
+                         power=2000,
                          attack_range=1,
-                         speed=1,
+                         speed=2,
                          sight=5,
                          energy=10,
                          movement=1,
@@ -175,7 +175,7 @@ def main():
                          hp=100,
                          power=20,
                          attack_range=1,
-                         speed=2,
+                         speed=1,
                          sight=5,
                          energy=10,
                          movement=1,

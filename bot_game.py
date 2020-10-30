@@ -237,14 +237,6 @@ class Battlefield:
         self.map[bot.coords].remove(bot)
         self.bots_from_speeds[bot.speed].remove(bot)
     
-    # def move_item(self, item, new_coords):
-    #     if not item in self.map[item.coords]:
-    #         items = self.map[item.coords]
-    #         raise ValueError('self.map[item.coords]: {}'.format(items))
-        
-    #     self.map[item.coords].remove(item)
-    #     self.map(new_coords).append(item)
-    
     def get_visible_coords(self, bot):
         """
         Return the coords visible to the given bot.
@@ -301,18 +293,10 @@ class Battlefield:
             moves: {MoveType: {Bot: [Move]}}
         """
         all_moves = {bot:bot.get_moves() for bot in self.bots}
-        # print('all_moves:')
-        # print(all_moves)
-        # print('')
+        
         result = {t:dict() for t in MoveType}
-        # print('start:')
-        # print(result)
-        # print('')
         
         for bot, moves in all_moves.items():
-            # print('moves:')
-            # print(moves)
-            # print('')
             for move_type in moves:
                 result[move_type][bot] = moves[move_type]
         
@@ -343,6 +327,27 @@ class Battlefield:
         
         for effect in readied:
             self.effects_waiting.remove(effect)
+    
+    def upkeep(self):
+        """
+        Perform upkeep tasks, like giving energy to bots on energy sources.
+        """
+        
+        #Give energy to bots on energy sources
+        for coords, items in self.map.items():
+            sources = [i for i in items if type(i) is EnergySource]
+            if not sources:
+                continue
+            
+            bots = [i for i in items if type(i) is Bot]
+            if not bots:
+                continue
+            
+            es = sources[0]
+            bot = bots[0]
+            effect = eff.GiveEnergyEffect([es], es.amount, bot)
+            self.register_effect(effect)
+        self.resolve_effects()
     
     def register_effect(self, effect):
         """
@@ -502,25 +507,20 @@ class Battlefield:
         Parameters:
             attacks {Bot: [Move]}: All the ATTACK moves to process.
         """
-        # print(moves_from_bots)
         if not moves_from_bots:
             return
         
-        # print('bots:')
-        # print(list(moves_from_bots))
-        # print('')
         #TODO check for whether bot can attack
         speeds = list(set([b.speed for b in moves_from_bots]))
-        
-        # speeds.sort(reverse=True)
-        # print('speeds: {}'.format(speeds))
+        speeds.sort(reverse=True)
         
         bots_from_speeds = {s:[] for s in speeds}
-        # for bot in self.bots:
+        
         for bot in moves_from_bots:
             bots_from_speeds[bot.speed].append(bot)
         
         for speed in speeds:
+            # print('speed: {}'.format(speed))
             attacked_coords = list()
             for bot in bots_from_speeds[speed]:
                 if not bot in self.bots:
@@ -535,7 +535,7 @@ class Battlefield:
                 tc = move.target_coords
                 attacked_coords.append(tc)
                 
-                attack_effect = eff.AttackEffect([bot], bot.speed, bot.power, tc)
+                attack_effect = eff.AttackEffect([bot], bot.power, tc)
                 self.register_effect(attack_effect)
             
             self.resolve_effects()
@@ -560,7 +560,7 @@ class Battlefield:
         Bots with higher speed have priority for movement.
         
         Parameters:
-            moves {Bot: [Move]}
+            moves {Bot: [Move]}: All the MOVE moves to process.
         """
         
         #TODO check how many moves a bot can have
@@ -695,6 +695,7 @@ class Battlefield:
         Advance the game by one turn.
         """
         self.ready_effects()
+        self.upkeep()
         self.give_bots_info()
         
         moves = self.get_bots_moves()
@@ -820,21 +821,6 @@ class Bot(object):
         return self.hp <= 0
     
     def view(self):
-        # result =  {'type':'Bot',
-        #            'coords':self.coords,
-        #            'max_hp':self.max_hp,
-        #            'power':self.power,
-        #            'attack_range':self.attack_range,
-        #            'speed':self.speed,
-        #            'sight':self.sight,
-        #            'energy':self.energy,
-        #            'movement':self.movement,
-        #            'player':self.player,
-        #            'message':self.message}
-        
-        # result.update(self.special_stats)
-        
-        # return result
         result = BotView(coords=self.coords,
                          max_hp=self.max_hp,
                          hp=self.hp,
@@ -921,7 +907,6 @@ class EnergySource:
         Return the object to be given to the bot code.
         """
         return self.cached_view
-        # return ('EnergySource', self.coords, self.amount)
 
 class EnergySourceView:
     def __init__(self, coords, amount):

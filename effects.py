@@ -29,13 +29,13 @@ class UtilEffect(Effect):
     pass
 
 class DamageEffect(GameEffect):
-    def __init__(self, sources, speed, damage, bot):
+    def __init__(self, sources, damage, bot):
         self.sources = tuple(sources)
-        self.speed = speed
         self.damage = damage
         self.bot = bot
     
     def resolve(self, battlefield):
+        # print('resolving')
         self.bot.take_damage(self.damage)
         
 def get_random_damage(power):
@@ -43,9 +43,8 @@ def get_random_damage(power):
     return sum([randint(0, 1) for _ in range(power)])
 
 class AttackEffect(GameEffect):
-    def __init__(self, sources, speed, power, coords):
+    def __init__(self, sources, power, coords):
         self.sources = tuple(sources)
-        self.speed = speed
         self.power = power
         self.coords = coords
     
@@ -59,13 +58,12 @@ class AttackEffect(GameEffect):
         bot = bots_at[0]
         damage = get_random_damage(self.power)
         
-        damage_effect = DamageEffect([self], self.speed, damage, bot)
+        damage_effect = DamageEffect([self], damage, bot)
         battlefield.register_effect(damage_effect)
 
-class GiveEnergyEffect:
-    def __init__(self, sources, speed, amount, bot):
+class GiveEnergyEffect(GameEffect):
+    def __init__(self, sources, amount, bot):
         self.sources = sources
-        self.speed = speed
         self.amount = amount
         self.bot = bot
     
