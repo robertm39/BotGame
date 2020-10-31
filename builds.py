@@ -17,7 +17,7 @@ BASE_STATS = ('max_hp',
               'energy',
               'movement')
 
-def base_cost(max_hp, power, attack_range, speed, sight, movement):
+def get_base_cost(max_hp, power, attack_range, speed, sight, movement):
     base = max_hp + power + 2**speed - 1
     
     range_mult = 0.75 + (attack_range / 4.0)
@@ -32,6 +32,8 @@ def base_cost(max_hp, power, attack_range, speed, sight, movement):
 class SpecialStat:
     pass
 
+STATS_FROM_NAMES = dict()
+
 #I'll actually implement this later
 #for now I'll just have this
 class TallStat(SpecialStat):
@@ -42,6 +44,7 @@ class TallStat(SpecialStat):
     
     def multiplier(self):
         return 1.5
+STATS_FROM_NAMES['tall'] = TallStat
 
 class BurnStat(SpecialStat):
     def __init__(self, value):
@@ -54,6 +57,7 @@ class BurnStat(SpecialStat):
     
     def multiplier(self):
         return 1 + self.value * 0.5
+STATS_FROM_NAMES['burn'] = BurnStat
 
 class BuildMove(bg.Move):
     def __init__(self,
@@ -90,4 +94,12 @@ class BuildMove(bg.Move):
         Calculate the cost of the build. The build will fail if the bot does
         not have enough energy to pay for the cost
         """
-        pass
+        base_cost = get_base_cost(self.max_hp,
+                                  self.power,
+                                  self.attack_range,
+                                  self.speed,
+                                  self.sight,
+                                  self.movement)
+        for stat, val in self.special_stats.items():
+            stat_class = STATS_FROM_NAMES[stat]
+            

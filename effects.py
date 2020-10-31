@@ -16,7 +16,7 @@ class GameEffect(Effect):
     """
     An effect that directly affects the game.
     For example, a damage effect, and attack effect,
-    an energy transfer effect.
+    or an energy transfer effect.
     These effects do not wait to be readied.
     """
     def new_turn(self, battlefield):
