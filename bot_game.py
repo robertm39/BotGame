@@ -46,18 +46,6 @@ def filter_in_bounds_coords(coordses, min_x, max_x, min_y, max_y):
         max_y (int): The maximum y-value allowed.
     """
     return [c for c in coordses if is_in_bounds(c, min_x, max_x, min_y, max_y)]
-    # result = list()
-    
-    # for x, y in coords_list:
-    #     if not is_in_bounds((x, y), min_x, max_x, min_y, max_y):
-    #         continue
-        
-    #     result.append((x, y))
-        
-    #     # if min_x <= x <= max_x and min_y <= y <= max_y:
-    #     #     result.append((x, y))
-    
-    # return result
 
 def distance(coords_1, coords_2):
     """
@@ -148,7 +136,7 @@ class Move:
 #BUILD:
 #TODO
 
-def cell_in_direction(coords, direction):
+def coords_in_direction(coords, direction):
     x, y = coords
     
     if direction == Direction.LEFT:
@@ -162,8 +150,6 @@ def cell_in_direction(coords, direction):
     else:
         raise ValueError('direction: {}'.format(direction))    
 
-#Want to split off the game-processing code from the Battlefield
-
 #the battlefield is zero-indexed
 class Battlefield:
     def __init__(self, width, height):
@@ -174,16 +160,6 @@ class Battlefield:
         
         self.bots = list()
         self.bots_from_speeds = dict()
-        
-        # self.effects_waiting = list()
-        # self.effects_ready = list()
-        
-        # self.process_funcs = {MoveType.GIVE_ENERGY: self.process_give_energys,
-        #                       MoveType.GIVE_LIFE: self.process_give_lifes,
-        #                       MoveType.HEAL: self.process_heals,
-        #                       MoveType.ATTACK: self.process_attacks,
-        #                       MoveType.MOVE: self.process_moves,
-        #                       MoveType.BUILD: self.process_builds}
         
         #Initialize map to an empty list everywhere
         for x in range(self.width):
@@ -278,443 +254,6 @@ class Battlefield:
     
     def is_in_bounds(self, coords):
         return is_in_bounds(coords, 0, self.width-1, 0, self.height-1)
-    
-    # def give_bots_info(self):
-    #     """
-    #     Give all bots their turn's information by calling their give_view()
-    #     methods.
-    #     """
-    #     for bot in self.bots:
-    #         visible_coords = self.get_visible_coords(bot)
-    #         view = dict()
-    #         for coords in visible_coords:
-    #             view[coords] = list()
-    #             for item in self.map.get(coords, list()):
-    #                 view[coords].append(item.view())
-            
-    #         bot.give_view(view)
-    
-    # def get_bots_moves(self):
-    #     """
-    #     Return all the bots' moves.
-        
-    #     Return:
-    #         moves: {MoveType: {Bot: [Move]}}
-    #     """
-    #     all_moves = {bot:bot.get_moves() for bot in self.bots}
-        
-    #     result = {t:dict() for t in MoveType}
-        
-    #     for bot, moves in all_moves.items():
-    #         for move_type in moves:
-    #             result[move_type][bot] = moves[move_type]
-        
-    #     return result
-    
-    def test_energys_all_positive(self):
-        """
-        Make sure that all bots have positive energy.
-        Raise ValueError if at least one bot does not have positive energy.
-        """
-        for bot in self.bots:
-            if bot.energy < 0:
-                raise ValueError('bot.energy: {}'.format(bot.energy))
-    
-    # def ready_effects(self):
-    #     """
-    #     For all effects whose ready() method returns True, put them in the
-    #     effects_ready list.
-    #     """
-    #     readied = list()
-    #     for effect in self.effects_waiting:
-            
-    #         effect.new_turn(self)
-            
-    #         if effect.ready():
-    #             readied.append(effect)
-    #             self.effects_ready.append(effect)
-        
-    #     for effect in readied:
-    #         self.effects_waiting.remove(effect)
-    
-    # def upkeep(self):
-    #     """
-    #     Perform upkeep tasks, like giving energy to bots on energy sources.
-    #     """
-        
-    #     #Give energy to bots on energy sources
-    #     for coords, items in self.map.items():
-    #         sources = [i for i in items if type(i) is EnergySource]
-    #         if not sources:
-    #             continue
-            
-    #         bots = [i for i in items if type(i) is Bot]
-    #         if not bots:
-    #             continue
-            
-    #         es = sources[0]
-    #         bot = bots[0]
-    #         effect = eff.GiveEnergyEffect([es], es.amount, bot)
-    #         self.register_effect(effect)
-    #     self.resolve_effects()
-    
-    # def register_effect(self, effect):
-    #     """
-    #     Put the given effect in the appropriate effect list.
-        
-    #     Arguments:
-    #         effect [Effect]: The effect to register.
-    #     """
-    #     if effect.ready():
-    #         self.effects_ready.append(effect)
-    #     else:
-    #         self.effects_waiting.append(effect)
-    
-    # def resolve_effects(self):
-    #     """
-    #     Resolve all ready effects.
-    #     """
-    #     for effect in self.effects_ready:
-    #         effect.resolve(self)
-        
-    #     #Now clear those effects away
-    #     self.effects_ready.clear()
-        
-    
-    # def process_give_energys(self, moves_from_bots):
-    #     """
-    #     Process the GIVE_ENERGY moves.
-        
-    #     Arguments:
-    #         moves_from_bots {Bot: [Move]}: The GIVE_ENERGY moves to process.
-    #     """
-        
-    #     #TODO add check for whether the bot can give energy
-    #     #All the bots that might end up with negative total energy
-    #     possible_negatives = []
-    #     for bot, moves in moves_from_bots.items():
-    #         if not moves:
-    #             continue
-            
-    #         move = moves[0]
-            
-    #         t_coords = cell_in_direction(bot.coords, move.direction)
-            
-    #         targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
-    #         if not targeted_bots:
-    #             continue
-            
-    #         targeted_bot = targeted_bots[0]
-    #         amount = move.amount
-            
-    #         #Check whether the transfers were valid later
-    #         #this allows transfers to be chained
-    #         bot.energy -= amount
-    #         targeted_bot.energy += amount
-            
-    #         if bot.energy < 0:
-    #             possible_negatives.append(bot)
-        
-    #     while possible_negatives:
-    #         bot = possible_negatives[0]
-    #         del possible_negatives[0]
-            
-    #         moves = moves_from_bots[bot]
-    #         if not moves:
-    #             continue
-    #         move = moves[0]
-            
-    #         if bot.energy >= 0:
-    #             continue
-            
-    #         t_coords = cell_in_direction(bot.coords, move.direction)
-            
-    #         targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
-    #         if not targeted_bots:
-    #             continue
-            
-    #         targeted_bot = targeted_bots[0]
-    #         amount = move.amount
-            
-    #         #Undo the transfer if the transferring bot ended up with
-    #         #negative total energy
-    #         bot.energy += amount
-    #         targeted_bot.energy -= amount
-            
-    #         #Now maybe the targeted bot has negative total energy,
-    #         #so any transfers it did will also need to be undone
-    #         if targeted_bot.energy < 0:
-    #             possible_negatives.append(targeted_bot)
-        
-    #     self.test_energys_all_positive()
-    
-    # def process_give_lifes(self, moves_from_bots):
-    #     """
-    #     Process all the GIVE_LIFE orders.
-        
-    #     Arguments:
-    #         moves_from_bots {Bot: [Move]}: All the GIVE_LIFE orders.
-    #     """
-    #     #TODO add check for whether the bot can give life
-    #     for bot, moves in moves_from_bots.items():
-    #         if not moves:
-    #             continue
-    #         if bot.energy == 0:
-    #             continue
-            
-    #         move = moves[0]
-            
-    #         t_coords = cell_in_direction(bot.coords, move.direction)
-            
-    #         targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
-    #         if not targeted_bots:
-    #             continue
-            
-    #         targeted_bot = targeted_bots[0]
-    #         amount = move.amount
-            
-    #         #You can only heal by as much energy as you have
-    #         amount = min(amount, bot.energy)
-            
-    #         #You can also only heal by as much damage as the healed bot has
-    #         amount = targeted_bot.increase_hp(amount)
-            
-    #         bot.energy -= amount
-        
-    #     self.test_energys_all_positive()
-    
-    # def process_heals(self, moves_from_bots):
-    #     """
-    #     Process all the HEAL orders given.
-        
-    #     Arguments:
-    #         moves_from_bots {Bot: [Move]}: All the HEAL orders to process.
-    #     """
-    #     #TODO add check for whether the bot can heal
-        
-    #     for bot, moves in moves_from_bots.items():
-    #         if not moves:
-    #             continue
-    #         if bot.energy == 0:
-    #             continue
-            
-    #         move = moves[0]
-    #         amount = move.amount
-            
-    #         #You can only heal by how much energy you have,
-    #         #and also only by how much damage you have
-    #         amount = min(amount, bot.energy, bot.max_hp - bot.hp)
-    #         bot.increase_hp(amount)
-    #         bot.energy -= amount
-        
-    #     self.test_energys_all_positive()
-    
-    # def process_attacks(self, moves_from_bots):
-    #     """
-    #     Process all the attack moves given.
-        
-    #     Arguments:
-    #         attacks {Bot: [Move]}: All the ATTACK moves to process.
-    #     """
-    #     if not moves_from_bots:
-    #         return
-        
-    #     #TODO check for whether bot can attack
-    #     speeds = list(set([b.speed for b in moves_from_bots]))
-    #     speeds.sort(reverse=True)
-        
-    #     bots_from_speeds = {s:[] for s in speeds}
-        
-    #     for bot in moves_from_bots:
-    #         bots_from_speeds[bot.speed].append(bot)
-        
-    #     for speed in speeds:
-    #         # print('speed: {}'.format(speed))
-    #         attacked_coords = list()
-    #         for bot in bots_from_speeds[speed]:
-    #             if not bot in self.bots:
-    #                 continue
-                
-    #             moves = moves_from_bots[bot]
-    #             if not moves:
-    #                 continue
-                
-    #             move = moves[0]
-                
-    #             tc = move.target_coords
-    #             attacked_coords.append(tc)
-                
-    #             attack_effect = eff.AttackEffect([bot], bot.power, tc)
-    #             self.register_effect(attack_effect)
-            
-    #         self.resolve_effects()
-            
-    #         #Remove all dead bots
-    #         for coords in attacked_coords:
-    #             items = self.at(coords)
-    #             bots = [i for i in items if type(i) is Bot]
-    #             if not bots:
-    #                 continue
-                
-    #             bot = bots[0]
-    #             if bot.is_dead():
-    #                 self.remove_bot(bot)
-    
-    # def process_moves(self, moves_from_bots):
-    #     """
-    #     Process the movement orders.
-    #     Algorithm: first assume all succeed (except for head-on ones), and then
-    #     undo unsuccessfull moves.
-        
-    #     Bots with higher speed have priority for movement.
-        
-    #     Arguments:
-    #         moves {Bot: [Move]}: All the MOVE moves to process.
-    #     """
-        
-    #     #TODO check how many moves a bot can have
-        
-    #     #For multiple moves:
-    #     #first do each bot's first move, then each second move, etc.
-    #     #bots w\ higher speed have priority
-        
-    #     #For each set of moves:
-    #     #first, move each bot to the spot it's moving to
-    #     #then, where two bots are in the same square, undo
-    #     #one or both moves
-    #     #continue until no bots are in same square
-        
-    #     moving_bots = list(moves_from_bots)
-        
-    #     i = 0
-    #     while(moving_bots):
-    #         #Only bots that successfully move (the first try) get put here
-    #         #so the only ones that don't are ones in head-on collisions
-    #         already_moved = list()
-            
-    #         not_moving = list()
-    #         moved_this_time = list()
-            
-    #         #First move all the bots
-    #         for bot in moving_bots:
-    #             moves = moves_from_bots[bot]
-                
-    #             if not len(moves) > i:
-    #                 not_moving.append(bot)
-    #                 continue
-                
-    #             move = moves[i]
-    #             direction = move.direction
-    #             new_coords = cell_in_direction(bot.coords, direction)
-                
-    #             #Check if this is in bounds
-    #             if not new_coords in self.map:
-    #                 continue
-                
-    #             #Check if this is a head-on move
-    #             bots_at = [b for b in self.at(new_coords) if type(b) is Bot]
-    #             unmoved_at = [b for b in bots_at if not b in already_moved]
-    #             if(unmoved_at):
-    #                 #There's an unmoved bot in the destination coords
-    #                 other_bot = unmoved_at[0]
-                    
-    #                 other_moves = moves_from_bots.get(other_bot, list())
-    #                 if len(other_moves) > i:
-    #                     #The bot is about to move
-    #                     move = other_moves[i]
-    #                     other_dir = move.direction
-                        
-    #                     other_dest = cell_in_direction(new_coords, other_dir)
-                        
-    #                     if other_dest == bot.coords:
-    #                         #There's a head-on 
-    #                         #So this movement fails
-    #                         continue
-    #                 else:
-    #                     #The other bot isn't about to move, so you can't
-    #                     #move into its square
-    #                     continue
-                
-    #             self.set_coords(bot, new_coords)
-    #             already_moved.append(bot)
-    #             moved_this_time.append(bot)
-            
-    #         #We don't need this one to be accurate now
-    #         #Because I just use moved_this_time to resolve conflicts
-    #         #But I'll do it anyways
-    #         for bot in not_moving:
-    #             moving_bots.remove(bot)
-            
-    #         #Then undo unsuccessful moves
-    #         packed_coords = set()
-    #         for bot in moving_bots:
-    #             items_at = self.at(bot.coords)
-    #             num_bots_at = len([b for b in items_at if type(b) is Bot])
-    #             if(num_bots_at >= 2):
-    #                 packed_coords.add(bot.coords)
-            
-    #         packed_coords = list(packed_coords)
-    #         while packed_coords:
-    #             packed_coord = packed_coords[0]
-    #             del packed_coords[0]
-                
-    #             items_at = self.at(packed_coord)
-    #             bots_at = [b for b in items_at if type(b) is Bot]
-                
-    #             moved_bots = [b for b in bots_at if b in moved_this_time]
-                
-    #             max_speed = max([b.speed for b in moved_bots])
-    #             fastest_bots = [b for b in moved_bots if b.speed == max_speed]
-                
-    #             move_back = moved_bots.copy()
-    #             if len(fastest_bots) == 1:
-    #                 fastest_bot = fastest_bots[0]
-                    
-    #                 #One bot is faster than all the others
-    #                 #So only move the slower bots back to their original spaces
-    #                 move_back = [b for b in moved_bots if b != fastest_bot]
-                
-    #             for bot in move_back:
-    #                 coords = bot.coords
-    #                 direction = moves_from_bots[bot][i].direction
-    #                 old_coords = cell_in_direction(coords, OPPOSITE[direction])
-    #                 self.set_coords(bot, old_coords)
-                    
-    #                 #Check if this spot is crowded now
-    #                 if not coords in packed_coords:
-    #                     items_at = self.at(old_coords)
-    #                     bots_at = [b for b in items_at if type(b) is Bot]
-    #                     if len(bots_at) >= 2:
-    #                         packed_coords.append(coords)
-                
-    #         i += 1
-    
-    # def process_builds(self, moves_from_bots):
-    #     """
-    #     Process the build orders.
-        
-    #     Arguments:
-    #         moves_from_bots {Bot: [Move]}: All the build orders to process.
-    #     """
-    #     #TODO
-    #     pass
-    
-    # def advance(self):
-    #     """
-    #     Advance the game by one turn.
-    #     """
-    #     self.ready_effects()
-    #     self.upkeep()
-    #     self.give_bots_info()
-        
-    #     moves = self.get_bots_moves()
-        
-    #     for move_type, moves_from_bots in moves.items():
-            
-    #         if not moves_from_bots:
-    #             continue
-            
-    #         self.process_funcs[move_type](moves_from_bots)
 
 class GameManager:
     def __init__(self, battlefield):
@@ -822,7 +361,7 @@ class GameManager:
             
             move = moves[0]
             
-            t_coords = cell_in_direction(bot.coords, move.direction)
+            t_coords = coords_in_direction(bot.coords, move.direction)
             
             targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
             if not targeted_bots:
@@ -851,11 +390,11 @@ class GameManager:
             if bot.energy >= 0:
                 continue
             
-            t_coords = cell_in_direction(bot.coords, move.direction)
+            t_coords = coords_in_direction(bot.coords, move.direction)
             
             # items_at = self.battlefield.at(t_coords)
             # targeted_bots = filter(lambda x: type(x) is Bot, items_at)
-            targetes_bots = self.battlefield.bots_at(t_coords)
+            targeted_bots = self.battlefield.bots_at(t_coords)
             
             if not targeted_bots:
                 #At this point, the bot isn't giving energy to any bots,
@@ -893,7 +432,7 @@ class GameManager:
             
             move = moves[0]
             
-            t_coords = cell_in_direction(bot.coords, move.direction)
+            t_coords = coords_in_direction(bot.coords, move.direction)
             
             
             # items_at = self.battlefield.at(t_coords)
@@ -1038,7 +577,7 @@ class GameManager:
                 
                 move = moves[i]
                 direction = move.direction
-                new_coords = cell_in_direction(bot.coords, direction)
+                new_coords = coords_in_direction(bot.coords, direction)
                 
                 #Check if this is in bounds
                 # if not new_coords in self.battlefield.map:
@@ -1061,7 +600,7 @@ class GameManager:
                         move = other_moves[i]
                         other_dir = move.direction
                         
-                        other_dest = cell_in_direction(new_coords, other_dir)
+                        other_dest = coords_in_direction(new_coords, other_dir)
                         
                         if other_dest == bot.coords:
                             #There's a head-on 
@@ -1117,7 +656,7 @@ class GameManager:
                 for bot in move_back:
                     coords = bot.coords
                     direction = moves_from_bots[bot][i].direction
-                    old_coords = cell_in_direction(coords, OPPOSITE[direction])
+                    old_coords = coords_in_direction(coords, OPPOSITE[direction])
                     self.battlefield.set_coords(bot, old_coords)
                     
                     #Check if this spot is crowded now
@@ -1138,8 +677,44 @@ class GameManager:
         Arguments:
             moves_from_bots {Bot: [Move]}: All the build orders to process.
         """
-        #TODO
-        pass
+        
+        for bot, moves in moves_from_bots.items():
+            if not moves:
+                continue
+            move = moves[0]
+            t_coords = coords_in_direction(bot.coords, move.direction)
+            
+            if self.battlefield.bots_at(t_coords):
+                #Can't build a bot where there already is a bot
+                continue
+            
+            if move.cost > bot.energy:
+                #The bot cannot afford the build, so it doesn't happen
+                continue
+            
+            bot.energy -= move.cost
+            
+            #Make a new controller of the same type
+            #real controllers will need inits that only take message
+            #as an argument
+            controller = type(bot.controller)(move.message)
+            
+            new_bot = Bot(t_coords,
+                          move.max_hp,
+                          move.hp,
+                          move.power,
+                          move.attack_range,
+                          move.speed,
+                          move.sight,
+                          move.energy,
+                          move.movement,
+                          move.player,
+                          move.message,
+                          controller,
+                          move.special_stats,
+                          **move.special_stats_dict)
+            
+            self.battlefield.add_bot(new_bot)
     
     def advance(self):
         """
@@ -1172,7 +747,8 @@ class Bot:
                  player,
                  message,
                  controller,
-                 **special_stats):
+                 special_stats,
+                 **special_stats_dict):
         
         self.coords = coords
         self.max_hp = max_hp
@@ -1188,8 +764,9 @@ class Bot:
         self.controller = controller
         
         self.special_stats = special_stats.copy()
+        self.special_stats_dict = special_stats_dict.copy()
         
-        for stat, val in special_stats.items():
+        for stat, val in special_stats_dict.items():
             self.__setattr__(stat, val)
     
     def increase_hp(self, amount):
@@ -1283,7 +860,7 @@ class Bot:
                          movement=self.movement,
                          player=self.player,
                          message=self.message,
-                         **self.special_stats)
+                         **self.special_stats_dict)
         
         return result
     

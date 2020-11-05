@@ -10,6 +10,9 @@ from random import randint
 import bot_game as bg
 
 class SitController:
+    def __init__(self, message=''):
+        pass
+    
     def give_view(self, view, owner_view):
         pass
     
@@ -29,7 +32,7 @@ class WalkController:
         return moves
 
 class SeekAndFightController:
-    def __init__(self):
+    def __init__(self, message=''):
         # self.direction = direction
         # self.fight = fight
         

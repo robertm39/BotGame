@@ -166,24 +166,25 @@ def main():
                          movement=1,
                          player='1',
                          message='',
+                         special_stats=dict(),
                          controller=ctlr_1)
     battlefield.add_item(bot_1)
     
-    # ctlr_2 = controllers.WalkController(bot_game.Direction.LEFT)
-    ctlr_2 = controllers.SeekAndFightController()
-    bot_2 = bot_game.Bot(coords=(5, 0),
-                         max_hp=100,
-                         hp=100,
-                         power=20,
-                         attack_range=1,
-                         speed=1,
-                         sight=5,
-                         energy=10,
-                         movement=1,
-                         player='2',
-                         message='',
-                         controller=ctlr_2)
-    battlefield.add_item(bot_2)
+    # ctlr_2 = controllers.SeekAndFightController()
+    # bot_2 = bot_game.Bot(coords=(5, 0),
+    #                      max_hp=100,
+    #                      hp=100,
+    #                      power=20,
+    #                      attack_range=1,
+    #                      speed=1,
+    #                      sight=5,
+    #                      energy=10,
+    #                      movement=1,
+    #                      player='2',
+    #                      message='',
+    #                      special_stats=dict(),
+    #                      controller=ctlr_2)
+    # battlefield.add_item(bot_2)
     
     game_manager = bot_game.GameManager(battlefield)
     
@@ -192,11 +193,6 @@ def main():
     
     frame.start_loop()
     root.mainloop()
-    
-    # for _ in range(5):
-    #     sleep(1)
-    #     frame.update_frame()
-    #     print('frame')
 
 if __name__ == '__main__':
     main()

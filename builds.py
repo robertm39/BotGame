@@ -82,12 +82,17 @@ class BuildMove(bg.Move):
         self.movement = movement
         self.player = player
         self.message = message
-        self.special_stats = special_stats
+        self.special_stats_dict = special_stats.copy() #{name: val}
+        self.special_stats = list()
         
         for name, val in special_stats.items():
             self.__setattr__(name, val)
+            stat_class = STATS_FROM_NAMES[name]
+            stat = stat_class(val)
+            self.special_stats.append(stat)
         
         self.calculate_cost()
+        #Now self.cost is initialized
     
     def calculate_cost(self):
         """
@@ -100,6 +105,10 @@ class BuildMove(bg.Move):
                                   self.speed,
                                   self.sight,
                                   self.movement)
-        for stat, val in self.special_stats.items():
-            stat_class = STATS_FROM_NAMES[stat]
+        
+        multiplier = 1.0
+        for stat in self.special_stats:
+            multiplier *= stat.multiplier()
+        
+        self.cost = base_cost * multiplier
             
