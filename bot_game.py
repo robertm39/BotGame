@@ -13,7 +13,7 @@ def is_in_bounds(coords, min_x, max_x, min_y, max_y):
     """
     Return whether the given coords are within the given bounds.
     
-    Parameters:
+    Arguments:
         coords (int, int): The coords to check.
         min_x (int): The minimum x-value allowed.
         max_x (int): The maximum x-value allowed.
@@ -38,7 +38,7 @@ def filter_in_bounds_coords(coordses, min_x, max_x, min_y, max_y):
     """
     Return the coords in coords_list within the given bounds.
     
-    Parameters:
+    Arguments:
         coords_list [(int, int)]: The coords to check.
         min_x (int): The minimum x-value allowed.
         max_x (int): The maximum x-value allowed.
@@ -63,7 +63,7 @@ def distance(coords_1, coords_2):
     """
     Return the distance between the two given coords.
     
-    Parameters:
+    Arguments:
         coords_1 (int, int): The first pair of coords.
         coords_2 (int, int): The second pair of coords.
     """
@@ -82,7 +82,7 @@ def coords_within_distance(coords,
     Return all the coords within the given distance of the given coords,
     as long as they are in the given bounds.
     
-    Parameters:
+    Arguments:
         coords (int, int): The coords to measure distance from.
         distance (int): The maximum distance.
         min_x (int): The minimum x-value allowed.
@@ -162,6 +162,8 @@ def cell_in_direction(coords, direction):
     else:
         raise ValueError('direction: {}'.format(direction))    
 
+#Want to split off the game-processing code from the Battlefield
+
 #the battlefield is zero-indexed
 class Battlefield:
     def __init__(self, width, height):
@@ -173,15 +175,15 @@ class Battlefield:
         self.bots = list()
         self.bots_from_speeds = dict()
         
-        self.effects_waiting = list()
-        self.effects_ready = list()
+        # self.effects_waiting = list()
+        # self.effects_ready = list()
         
-        self.process_funcs = {MoveType.GIVE_ENERGY: self.process_give_energys,
-                              MoveType.GIVE_LIFE: self.process_give_lifes,
-                              MoveType.HEAL: self.process_heals,
-                              MoveType.ATTACK: self.process_attacks,
-                              MoveType.MOVE: self.process_moves,
-                              MoveType.BUILD: self.process_builds}
+        # self.process_funcs = {MoveType.GIVE_ENERGY: self.process_give_energys,
+        #                       MoveType.GIVE_LIFE: self.process_give_lifes,
+        #                       MoveType.HEAL: self.process_heals,
+        #                       MoveType.ATTACK: self.process_attacks,
+        #                       MoveType.MOVE: self.process_moves,
+        #                       MoveType.BUILD: self.process_builds}
         
         #Initialize map to an empty list everywhere
         for x in range(self.width):
@@ -190,6 +192,10 @@ class Battlefield:
     
     def at(self, coords):
         return self.map.get(coords, list())
+    
+    def bots_at(self, coords):
+        items_at = self.at(coords)
+        return [b for b in items_at if type(b) is Bot]
     
     def get_items(self):
         return sum(self.map.values(), [])
@@ -241,7 +247,7 @@ class Battlefield:
         """
         Return the coords visible to the given bot.
         
-        Parameters:
+        Arguments:
             bot [Bot]: The bot to return the visible coords of.
         """
         #TODO incorporate line-of-sight checks
@@ -252,7 +258,7 @@ class Battlefield:
         Move the item to the given coords, updating both the item's .coords
         attribute and the map.
         
-        Parameters:
+        Arguments:
             item: The item whose coords to change.
             coords (int, int): The coords to move the item to.
         """
@@ -270,37 +276,40 @@ class Battlefield:
         self.map[coords].append(item)
         item.coords = coords
     
-    def give_bots_info(self):
-        """
-        Give all bots their turn's information by calling their give_view()
-        methods.
-        """
-        for bot in self.bots:
-            visible_coords = self.get_visible_coords(bot)
-            view = dict()
-            for coords in visible_coords:
-                view[coords] = list()
-                for item in self.map.get(coords, list()):
-                    view[coords].append(item.view())
-            
-            bot.give_view(view)
+    def is_in_bounds(self, coords):
+        return is_in_bounds(coords, 0, self.width-1, 0, self.height-1)
     
-    def get_bots_moves(self):
-        """
-        Return all the bots' moves.
+    # def give_bots_info(self):
+    #     """
+    #     Give all bots their turn's information by calling their give_view()
+    #     methods.
+    #     """
+    #     for bot in self.bots:
+    #         visible_coords = self.get_visible_coords(bot)
+    #         view = dict()
+    #         for coords in visible_coords:
+    #             view[coords] = list()
+    #             for item in self.map.get(coords, list()):
+    #                 view[coords].append(item.view())
+            
+    #         bot.give_view(view)
+    
+    # def get_bots_moves(self):
+    #     """
+    #     Return all the bots' moves.
         
-        Return:
-            moves: {MoveType: {Bot: [Move]}}
-        """
-        all_moves = {bot:bot.get_moves() for bot in self.bots}
+    #     Return:
+    #         moves: {MoveType: {Bot: [Move]}}
+    #     """
+    #     all_moves = {bot:bot.get_moves() for bot in self.bots}
         
-        result = {t:dict() for t in MoveType}
+    #     result = {t:dict() for t in MoveType}
         
-        for bot, moves in all_moves.items():
-            for move_type in moves:
-                result[move_type][bot] = moves[move_type]
+    #     for bot, moves in all_moves.items():
+    #         for move_type in moves:
+    #             result[move_type][bot] = moves[move_type]
         
-        return result
+    #     return result
     
     def test_energys_all_positive(self):
         """
@@ -311,22 +320,469 @@ class Battlefield:
             if bot.energy < 0:
                 raise ValueError('bot.energy: {}'.format(bot.energy))
     
-    def ready_effects(self):
-        """
-        For all effects whose ready() method returns True, put them in the
-        effects_ready list.
-        """
-        readied = list()
-        for effect in self.effects_waiting:
+    # def ready_effects(self):
+    #     """
+    #     For all effects whose ready() method returns True, put them in the
+    #     effects_ready list.
+    #     """
+    #     readied = list()
+    #     for effect in self.effects_waiting:
             
-            effect.new_turn(self)
+    #         effect.new_turn(self)
             
-            if effect.ready():
-                readied.append(effect)
-                self.effects_ready.append(effect)
+    #         if effect.ready():
+    #             readied.append(effect)
+    #             self.effects_ready.append(effect)
         
-        for effect in readied:
-            self.effects_waiting.remove(effect)
+    #     for effect in readied:
+    #         self.effects_waiting.remove(effect)
+    
+    # def upkeep(self):
+    #     """
+    #     Perform upkeep tasks, like giving energy to bots on energy sources.
+    #     """
+        
+    #     #Give energy to bots on energy sources
+    #     for coords, items in self.map.items():
+    #         sources = [i for i in items if type(i) is EnergySource]
+    #         if not sources:
+    #             continue
+            
+    #         bots = [i for i in items if type(i) is Bot]
+    #         if not bots:
+    #             continue
+            
+    #         es = sources[0]
+    #         bot = bots[0]
+    #         effect = eff.GiveEnergyEffect([es], es.amount, bot)
+    #         self.register_effect(effect)
+    #     self.resolve_effects()
+    
+    # def register_effect(self, effect):
+    #     """
+    #     Put the given effect in the appropriate effect list.
+        
+    #     Arguments:
+    #         effect [Effect]: The effect to register.
+    #     """
+    #     if effect.ready():
+    #         self.effects_ready.append(effect)
+    #     else:
+    #         self.effects_waiting.append(effect)
+    
+    # def resolve_effects(self):
+    #     """
+    #     Resolve all ready effects.
+    #     """
+    #     for effect in self.effects_ready:
+    #         effect.resolve(self)
+        
+    #     #Now clear those effects away
+    #     self.effects_ready.clear()
+        
+    
+    # def process_give_energys(self, moves_from_bots):
+    #     """
+    #     Process the GIVE_ENERGY moves.
+        
+    #     Arguments:
+    #         moves_from_bots {Bot: [Move]}: The GIVE_ENERGY moves to process.
+    #     """
+        
+    #     #TODO add check for whether the bot can give energy
+    #     #All the bots that might end up with negative total energy
+    #     possible_negatives = []
+    #     for bot, moves in moves_from_bots.items():
+    #         if not moves:
+    #             continue
+            
+    #         move = moves[0]
+            
+    #         t_coords = cell_in_direction(bot.coords, move.direction)
+            
+    #         targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
+    #         if not targeted_bots:
+    #             continue
+            
+    #         targeted_bot = targeted_bots[0]
+    #         amount = move.amount
+            
+    #         #Check whether the transfers were valid later
+    #         #this allows transfers to be chained
+    #         bot.energy -= amount
+    #         targeted_bot.energy += amount
+            
+    #         if bot.energy < 0:
+    #             possible_negatives.append(bot)
+        
+    #     while possible_negatives:
+    #         bot = possible_negatives[0]
+    #         del possible_negatives[0]
+            
+    #         moves = moves_from_bots[bot]
+    #         if not moves:
+    #             continue
+    #         move = moves[0]
+            
+    #         if bot.energy >= 0:
+    #             continue
+            
+    #         t_coords = cell_in_direction(bot.coords, move.direction)
+            
+    #         targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
+    #         if not targeted_bots:
+    #             continue
+            
+    #         targeted_bot = targeted_bots[0]
+    #         amount = move.amount
+            
+    #         #Undo the transfer if the transferring bot ended up with
+    #         #negative total energy
+    #         bot.energy += amount
+    #         targeted_bot.energy -= amount
+            
+    #         #Now maybe the targeted bot has negative total energy,
+    #         #so any transfers it did will also need to be undone
+    #         if targeted_bot.energy < 0:
+    #             possible_negatives.append(targeted_bot)
+        
+    #     self.test_energys_all_positive()
+    
+    # def process_give_lifes(self, moves_from_bots):
+    #     """
+    #     Process all the GIVE_LIFE orders.
+        
+    #     Arguments:
+    #         moves_from_bots {Bot: [Move]}: All the GIVE_LIFE orders.
+    #     """
+    #     #TODO add check for whether the bot can give life
+    #     for bot, moves in moves_from_bots.items():
+    #         if not moves:
+    #             continue
+    #         if bot.energy == 0:
+    #             continue
+            
+    #         move = moves[0]
+            
+    #         t_coords = cell_in_direction(bot.coords, move.direction)
+            
+    #         targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
+    #         if not targeted_bots:
+    #             continue
+            
+    #         targeted_bot = targeted_bots[0]
+    #         amount = move.amount
+            
+    #         #You can only heal by as much energy as you have
+    #         amount = min(amount, bot.energy)
+            
+    #         #You can also only heal by as much damage as the healed bot has
+    #         amount = targeted_bot.increase_hp(amount)
+            
+    #         bot.energy -= amount
+        
+    #     self.test_energys_all_positive()
+    
+    # def process_heals(self, moves_from_bots):
+    #     """
+    #     Process all the HEAL orders given.
+        
+    #     Arguments:
+    #         moves_from_bots {Bot: [Move]}: All the HEAL orders to process.
+    #     """
+    #     #TODO add check for whether the bot can heal
+        
+    #     for bot, moves in moves_from_bots.items():
+    #         if not moves:
+    #             continue
+    #         if bot.energy == 0:
+    #             continue
+            
+    #         move = moves[0]
+    #         amount = move.amount
+            
+    #         #You can only heal by how much energy you have,
+    #         #and also only by how much damage you have
+    #         amount = min(amount, bot.energy, bot.max_hp - bot.hp)
+    #         bot.increase_hp(amount)
+    #         bot.energy -= amount
+        
+    #     self.test_energys_all_positive()
+    
+    # def process_attacks(self, moves_from_bots):
+    #     """
+    #     Process all the attack moves given.
+        
+    #     Arguments:
+    #         attacks {Bot: [Move]}: All the ATTACK moves to process.
+    #     """
+    #     if not moves_from_bots:
+    #         return
+        
+    #     #TODO check for whether bot can attack
+    #     speeds = list(set([b.speed for b in moves_from_bots]))
+    #     speeds.sort(reverse=True)
+        
+    #     bots_from_speeds = {s:[] for s in speeds}
+        
+    #     for bot in moves_from_bots:
+    #         bots_from_speeds[bot.speed].append(bot)
+        
+    #     for speed in speeds:
+    #         # print('speed: {}'.format(speed))
+    #         attacked_coords = list()
+    #         for bot in bots_from_speeds[speed]:
+    #             if not bot in self.bots:
+    #                 continue
+                
+    #             moves = moves_from_bots[bot]
+    #             if not moves:
+    #                 continue
+                
+    #             move = moves[0]
+                
+    #             tc = move.target_coords
+    #             attacked_coords.append(tc)
+                
+    #             attack_effect = eff.AttackEffect([bot], bot.power, tc)
+    #             self.register_effect(attack_effect)
+            
+    #         self.resolve_effects()
+            
+    #         #Remove all dead bots
+    #         for coords in attacked_coords:
+    #             items = self.at(coords)
+    #             bots = [i for i in items if type(i) is Bot]
+    #             if not bots:
+    #                 continue
+                
+    #             bot = bots[0]
+    #             if bot.is_dead():
+    #                 self.remove_bot(bot)
+    
+    # def process_moves(self, moves_from_bots):
+    #     """
+    #     Process the movement orders.
+    #     Algorithm: first assume all succeed (except for head-on ones), and then
+    #     undo unsuccessfull moves.
+        
+    #     Bots with higher speed have priority for movement.
+        
+    #     Arguments:
+    #         moves {Bot: [Move]}: All the MOVE moves to process.
+    #     """
+        
+    #     #TODO check how many moves a bot can have
+        
+    #     #For multiple moves:
+    #     #first do each bot's first move, then each second move, etc.
+    #     #bots w\ higher speed have priority
+        
+    #     #For each set of moves:
+    #     #first, move each bot to the spot it's moving to
+    #     #then, where two bots are in the same square, undo
+    #     #one or both moves
+    #     #continue until no bots are in same square
+        
+    #     moving_bots = list(moves_from_bots)
+        
+    #     i = 0
+    #     while(moving_bots):
+    #         #Only bots that successfully move (the first try) get put here
+    #         #so the only ones that don't are ones in head-on collisions
+    #         already_moved = list()
+            
+    #         not_moving = list()
+    #         moved_this_time = list()
+            
+    #         #First move all the bots
+    #         for bot in moving_bots:
+    #             moves = moves_from_bots[bot]
+                
+    #             if not len(moves) > i:
+    #                 not_moving.append(bot)
+    #                 continue
+                
+    #             move = moves[i]
+    #             direction = move.direction
+    #             new_coords = cell_in_direction(bot.coords, direction)
+                
+    #             #Check if this is in bounds
+    #             if not new_coords in self.map:
+    #                 continue
+                
+    #             #Check if this is a head-on move
+    #             bots_at = [b for b in self.at(new_coords) if type(b) is Bot]
+    #             unmoved_at = [b for b in bots_at if not b in already_moved]
+    #             if(unmoved_at):
+    #                 #There's an unmoved bot in the destination coords
+    #                 other_bot = unmoved_at[0]
+                    
+    #                 other_moves = moves_from_bots.get(other_bot, list())
+    #                 if len(other_moves) > i:
+    #                     #The bot is about to move
+    #                     move = other_moves[i]
+    #                     other_dir = move.direction
+                        
+    #                     other_dest = cell_in_direction(new_coords, other_dir)
+                        
+    #                     if other_dest == bot.coords:
+    #                         #There's a head-on 
+    #                         #So this movement fails
+    #                         continue
+    #                 else:
+    #                     #The other bot isn't about to move, so you can't
+    #                     #move into its square
+    #                     continue
+                
+    #             self.set_coords(bot, new_coords)
+    #             already_moved.append(bot)
+    #             moved_this_time.append(bot)
+            
+    #         #We don't need this one to be accurate now
+    #         #Because I just use moved_this_time to resolve conflicts
+    #         #But I'll do it anyways
+    #         for bot in not_moving:
+    #             moving_bots.remove(bot)
+            
+    #         #Then undo unsuccessful moves
+    #         packed_coords = set()
+    #         for bot in moving_bots:
+    #             items_at = self.at(bot.coords)
+    #             num_bots_at = len([b for b in items_at if type(b) is Bot])
+    #             if(num_bots_at >= 2):
+    #                 packed_coords.add(bot.coords)
+            
+    #         packed_coords = list(packed_coords)
+    #         while packed_coords:
+    #             packed_coord = packed_coords[0]
+    #             del packed_coords[0]
+                
+    #             items_at = self.at(packed_coord)
+    #             bots_at = [b for b in items_at if type(b) is Bot]
+                
+    #             moved_bots = [b for b in bots_at if b in moved_this_time]
+                
+    #             max_speed = max([b.speed for b in moved_bots])
+    #             fastest_bots = [b for b in moved_bots if b.speed == max_speed]
+                
+    #             move_back = moved_bots.copy()
+    #             if len(fastest_bots) == 1:
+    #                 fastest_bot = fastest_bots[0]
+                    
+    #                 #One bot is faster than all the others
+    #                 #So only move the slower bots back to their original spaces
+    #                 move_back = [b for b in moved_bots if b != fastest_bot]
+                
+    #             for bot in move_back:
+    #                 coords = bot.coords
+    #                 direction = moves_from_bots[bot][i].direction
+    #                 old_coords = cell_in_direction(coords, OPPOSITE[direction])
+    #                 self.set_coords(bot, old_coords)
+                    
+    #                 #Check if this spot is crowded now
+    #                 if not coords in packed_coords:
+    #                     items_at = self.at(old_coords)
+    #                     bots_at = [b for b in items_at if type(b) is Bot]
+    #                     if len(bots_at) >= 2:
+    #                         packed_coords.append(coords)
+                
+    #         i += 1
+    
+    # def process_builds(self, moves_from_bots):
+    #     """
+    #     Process the build orders.
+        
+    #     Arguments:
+    #         moves_from_bots {Bot: [Move]}: All the build orders to process.
+    #     """
+    #     #TODO
+    #     pass
+    
+    # def advance(self):
+    #     """
+    #     Advance the game by one turn.
+    #     """
+    #     self.ready_effects()
+    #     self.upkeep()
+    #     self.give_bots_info()
+        
+    #     moves = self.get_bots_moves()
+        
+    #     for move_type, moves_from_bots in moves.items():
+            
+    #         if not moves_from_bots:
+    #             continue
+            
+    #         self.process_funcs[move_type](moves_from_bots)
+
+class GameManager:
+    def __init__(self, battlefield):
+        self.battlefield = battlefield
+        
+        self.waiting_codes = list()
+        self.triggered_codes = list()
+        self.replacement_codes = list()
+        self.effects = list()
+    
+        self.process_funcs = {MoveType.GIVE_ENERGY: self.process_give_energys,
+                              MoveType.GIVE_LIFE: self.process_give_lifes,
+                              MoveType.HEAL: self.process_heals,
+                              MoveType.ATTACK: self.process_attacks,
+                              MoveType.MOVE: self.process_moves,
+                              MoveType.BUILD: self.process_builds}
+    
+    def give_bots_info(self):
+        """
+        Give all bots their turn's information by calling their give_view()
+        methods.
+        """
+        for bot in self.battlefield.bots:
+            visible_coords = self.battlefield.get_visible_coords(bot)
+            view = dict()
+            for coords in visible_coords:
+                view[coords] = list()
+                for item in self.battlefield.at(coords):
+                    view[coords].append(item.view())
+            
+            bot.give_view(view)
+    
+    def get_bots_moves(self):
+        """
+        Return all the bots' moves.
+        
+        Return:
+            moves {MoveType: {Bot: [Move]}}
+        """
+        all_moves = {bot:bot.get_moves() for bot in self.battlefield.bots}
+        
+        result = {t:dict() for t in MoveType}
+        
+        for bot, moves in all_moves.items():
+            for move_type in moves:
+                result[move_type][bot] = moves[move_type]
+        
+        return result
+    
+    def register_effect(self, effect):
+        """
+        Register the given effect into self.effects.
+        
+        Arguments:
+            effect Effect: The effect to register.
+        """
+        self.effects.append(effect)
+    
+    def resolve_effects(self):
+        """
+        Resolve all the effetcs in self.effects, first checking for replacement
+        code and then for triggered code.
+        """
+        #Implement replacement code and triggered code later
+        for effect in self.effects:
+            effect.resolve(self)
+            
+        self.effects.clear()
     
     def upkeep(self):
         """
@@ -334,7 +790,7 @@ class Battlefield:
         """
         
         #Give energy to bots on energy sources
-        for coords, items in self.map.items():
+        for coords, items in self.battlefield.map.items():
             sources = [i for i in items if type(i) is EnergySource]
             if not sources:
                 continue
@@ -349,34 +805,11 @@ class Battlefield:
             self.register_effect(effect)
         self.resolve_effects()
     
-    def register_effect(self, effect):
-        """
-        Put the given effect in the appropriate effect list.
-        
-        Parameters:
-            effect [Effect]: The effect to register.
-        """
-        if effect.ready():
-            self.effects_ready.append(effect)
-        else:
-            self.effects_waiting.append(effect)
-    
-    def resolve_effects(self):
-        """
-        Resolve all ready effects.
-        """
-        for effect in self.effects_ready:
-            effect.resolve(self)
-        
-        #Now clear those effects away
-        self.effects_ready.clear()
-        
-    
     def process_give_energys(self, moves_from_bots):
         """
         Process the GIVE_ENERGY moves.
         
-        Parameters:
+        Arguments:
             moves_from_bots {Bot: [Move]}: The GIVE_ENERGY moves to process.
         """
         
@@ -420,9 +853,14 @@ class Battlefield:
             
             t_coords = cell_in_direction(bot.coords, move.direction)
             
-            targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
+            # items_at = self.battlefield.at(t_coords)
+            # targeted_bots = filter(lambda x: type(x) is Bot, items_at)
+            targetes_bots = self.battlefield.bots_at(t_coords)
+            
             if not targeted_bots:
-                continue
+                #At this point, the bot isn't giving energy to any bots,
+                #but its energy is still negative, which is unacceptable
+                raise ValueError('bot.energy: {}'.format(bot.energy))
             
             targeted_bot = targeted_bots[0]
             amount = move.amount
@@ -437,13 +875,13 @@ class Battlefield:
             if targeted_bot.energy < 0:
                 possible_negatives.append(targeted_bot)
         
-        self.test_energys_all_positive()
+        self.battlefield.test_energys_all_positive()
     
     def process_give_lifes(self, moves_from_bots):
         """
         Process all the GIVE_LIFE orders.
         
-        Parameters:
+        Arguments:
             moves_from_bots {Bot: [Move]}: All the GIVE_LIFE orders.
         """
         #TODO add check for whether the bot can give life
@@ -457,7 +895,11 @@ class Battlefield:
             
             t_coords = cell_in_direction(bot.coords, move.direction)
             
-            targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
+            
+            # items_at = self.battlefield.at(t_coords)
+            # targeted_bots = filter(lambda x: type(x) is Bot, items_at)
+            targeted_bots = self.battlefield.bots_at(t_coords)
+            
             if not targeted_bots:
                 continue
             
@@ -472,13 +914,13 @@ class Battlefield:
             
             bot.energy -= amount
         
-        self.test_energys_all_positive()
+        self.battlefield.test_energys_all_positive()
     
     def process_heals(self, moves_from_bots):
         """
         Process all the HEAL orders given.
         
-        Parameters:
+        Arguments:
             moves_from_bots {Bot: [Move]}: All the HEAL orders to process.
         """
         #TODO add check for whether the bot can heal
@@ -498,13 +940,13 @@ class Battlefield:
             bot.increase_hp(amount)
             bot.energy -= amount
         
-        self.test_energys_all_positive()
+        self.battlefield.test_energys_all_positive()
     
     def process_attacks(self, moves_from_bots):
         """
         Process all the attack moves given.
         
-        Parameters:
+        Arguments:
             attacks {Bot: [Move]}: All the ATTACK moves to process.
         """
         if not moves_from_bots:
@@ -523,7 +965,7 @@ class Battlefield:
             # print('speed: {}'.format(speed))
             attacked_coords = list()
             for bot in bots_from_speeds[speed]:
-                if not bot in self.bots:
+                if not bot in self.battlefield.bots:
                     continue
                 
                 moves = moves_from_bots[bot]
@@ -542,14 +984,14 @@ class Battlefield:
             
             #Remove all dead bots
             for coords in attacked_coords:
-                items = self.at(coords)
+                items = self.battlefield.at(coords)
                 bots = [i for i in items if type(i) is Bot]
                 if not bots:
                     continue
                 
                 bot = bots[0]
                 if bot.is_dead():
-                    self.remove_bot(bot)
+                    self.battlefield.remove_bot(bot)
     
     def process_moves(self, moves_from_bots):
         """
@@ -559,7 +1001,7 @@ class Battlefield:
         
         Bots with higher speed have priority for movement.
         
-        Parameters:
+        Arguments:
             moves {Bot: [Move]}: All the MOVE moves to process.
         """
         
@@ -599,11 +1041,15 @@ class Battlefield:
                 new_coords = cell_in_direction(bot.coords, direction)
                 
                 #Check if this is in bounds
-                if not new_coords in self.map:
+                # if not new_coords in self.battlefield.map:
+                if not self.battlefield.is_in_bounds(new_coords):
                     continue
                 
                 #Check if this is a head-on move
-                bots_at = [b for b in self.at(new_coords) if type(b) is Bot]
+                # items_at = self.at_new_coo
+                # bots_at = [b for b in self.at(new_coords) if type(b) is Bot]
+                bots_at = self.battlefield.bots_at(new_coords)
+                
                 unmoved_at = [b for b in bots_at if not b in already_moved]
                 if(unmoved_at):
                     #There's an unmoved bot in the destination coords
@@ -626,7 +1072,7 @@ class Battlefield:
                         #move into its square
                         continue
                 
-                self.set_coords(bot, new_coords)
+                self.battlefield.set_coords(bot, new_coords)
                 already_moved.append(bot)
                 moved_this_time.append(bot)
             
@@ -639,8 +1085,10 @@ class Battlefield:
             #Then undo unsuccessful moves
             packed_coords = set()
             for bot in moving_bots:
-                items_at = self.at(bot.coords)
-                num_bots_at = len([b for b in items_at if type(b) is Bot])
+                # items_at = self.at(bot.coords)
+                # num_bots_at = len([b for b in items_at if type(b) is Bot])
+                num_bots_at = len(self.battlefield.bots_at(bot.coords))
+                
                 if(num_bots_at >= 2):
                     packed_coords.add(bot.coords)
             
@@ -649,8 +1097,9 @@ class Battlefield:
                 packed_coord = packed_coords[0]
                 del packed_coords[0]
                 
-                items_at = self.at(packed_coord)
-                bots_at = [b for b in items_at if type(b) is Bot]
+                # items_at = self.at(packed_coord)
+                # bots_at = [b for b in items_at if type(b) is Bot]
+                bots_at = self.battlefield.bots_at(packed_coord)
                 
                 moved_bots = [b for b in bots_at if b in moved_this_time]
                 
@@ -669,12 +1118,14 @@ class Battlefield:
                     coords = bot.coords
                     direction = moves_from_bots[bot][i].direction
                     old_coords = cell_in_direction(coords, OPPOSITE[direction])
-                    self.set_coords(bot, old_coords)
+                    self.battlefield.set_coords(bot, old_coords)
                     
                     #Check if this spot is crowded now
                     if not coords in packed_coords:
-                        items_at = self.at(old_coords)
-                        bots_at = [b for b in items_at if type(b) is Bot]
+                        # items_at = self.at(old_coords)
+                        # bots_at = [b for b in items_at if type(b) is Bot]
+                        bots_at = self.battlefield.bots_at(old_coords)
+                        
                         if len(bots_at) >= 2:
                             packed_coords.append(coords)
                 
@@ -684,7 +1135,7 @@ class Battlefield:
         """
         Process the build orders.
         
-        Parameters:
+        Arguments:
             moves_from_bots {Bot: [Move]}: All the build orders to process.
         """
         #TODO
@@ -694,7 +1145,7 @@ class Battlefield:
         """
         Advance the game by one turn.
         """
-        self.ready_effects()
+        # self.ready_effects()
         self.upkeep()
         self.give_bots_info()
         
@@ -706,8 +1157,8 @@ class Battlefield:
                 continue
             
             self.process_funcs[move_type](moves_from_bots)
-            
-class Bot(object):
+
+class Bot:
     def __init__(self,
                  coords,
                  max_hp,
@@ -746,7 +1197,7 @@ class Bot(object):
         Increase the bot.hp by the nonnegative amount given.
         The bot.hp will remain <= bot.max_hp.
         
-        Parameters:
+        Arguments:
             amount int: The amount to increase hp by. Must be nonnegative.
         
         Return:
@@ -764,7 +1215,7 @@ class Bot(object):
         Decrease the bot.hp by the nonnegative amount given.
         THe bot.hp will remain >= 0.
         
-        Parameters:
+        Arguments:
             amount int: The amount to decrease hp by. Must be nonnegative.
         
         Return:
@@ -783,7 +1234,7 @@ class Bot(object):
         Change the bot's hp by the given amount.
         It will remain that 0 <= bot.hp <= bot.max_hp
         
-        Parameters:
+        Arguments:
             amount int: The amount to change hp by.
         
         Return:
@@ -800,7 +1251,7 @@ class Bot(object):
         """
         Take the given nonnegative amount of damage.
         
-        Parameters:
+        Arguments:
             amount int: The amount of damage to take. Must be nonnegative.
         
         Return:
@@ -841,7 +1292,7 @@ class Bot(object):
         Give the controller the view of the battlefield along with this
         bot's coords.
         
-        Parameters:
+        Arguments:
             view {(int, int): [item.view() return]}: The battlefield view.
         """
         self.controller.give_view(view, self.view())

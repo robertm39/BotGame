@@ -11,13 +11,14 @@ import bot_game
 import controllers
 
 class BotGameDisplayFrame(tk.Frame):
-    def __init__(self, parent, battlefield, square_size=10):
+    def __init__(self, parent, game_manager, square_size=10):
         tk.Frame.__init__(self, parent, background='white')
         
         self.parent = parent
         self.parent.title('Bot Game')
         
-        self.battlefield = battlefield
+        self.battlefield = game_manager.battlefield
+        self.game_manager = game_manager
         self.square_size = square_size
         
         self.init_gui()
@@ -127,7 +128,7 @@ class BotGameDisplayFrame(tk.Frame):
                                     tags='BOT')
     
     def update_frame(self):
-        self.battlefield.advance()
+        self.game_manager.advance()
         self.draw_bots()
     
     def loop(self):
@@ -184,7 +185,9 @@ def main():
                          controller=ctlr_2)
     battlefield.add_item(bot_2)
     
-    frame = BotGameDisplayFrame(root, battlefield, square_size=50)
+    game_manager = bot_game.GameManager(battlefield)
+    
+    frame = BotGameDisplayFrame(root, game_manager, square_size=50)
     tk.app = frame
     
     frame.start_loop()
