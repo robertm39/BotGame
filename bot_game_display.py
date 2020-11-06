@@ -148,26 +148,34 @@ def main():
     
     battlefield = bot_game.Battlefield(10, 10)
     
-    energy_source_1 = bot_game.EnergySource((1, 1), 5)
+    energy_source_1 = bot_game.EnergySource((1, 1), 10)
     energy_source_2 = bot_game.EnergySource((2, 3), 10)
+    energy_source_3 = bot_game.EnergySource((4, 2), 10)
+    energy_source_4 = bot_game.EnergySource((1, 4), 10)
+    energy_source_5 = bot_game.EnergySource((3, 5), 10)
     battlefield.add_item(energy_source_1)
     battlefield.add_item(energy_source_2)
+    battlefield.add_item(energy_source_3)
+    battlefield.add_item(energy_source_4)
+    battlefield.add_item(energy_source_5)
     
     # ctlr_1 = controllers.WalkController(bot_game.Direction.RIGHT)
-    ctlr_1 = controllers.SeekAndFightController()
-    bot_1 = bot_game.Bot(coords=(1, 1),
-                         max_hp=1,
-                         hp=1,
-                         power=2000,
+    ctlr_1 = controllers.SeekEnergyController()
+    bot_1 = bot_game.Bot(coords=(0, 0),
+                         max_hp=10,
+                         hp=10,
+                         power=10,
                          attack_range=1,
-                         speed=2,
-                         sight=5,
-                         energy=10,
+                         speed=0,
+                         sight=10,
+                         energy=0,
                          movement=1,
                          player='1',
                          message='',
                          special_stats=dict(),
                          controller=ctlr_1)
+    # print(bot_1)
+    # return
     battlefield.add_item(bot_1)
     
     # ctlr_2 = controllers.SeekAndFightController()

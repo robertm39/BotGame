@@ -688,6 +688,7 @@ class GameManager:
                 #Can't build a bot where there already is a bot
                 continue
             
+            # print('move.cost: {}'.format(move.cost))
             if move.cost > bot.energy:
                 #The bot cannot afford the build, so it doesn't happen
                 continue
@@ -701,14 +702,14 @@ class GameManager:
             
             new_bot = Bot(t_coords,
                           move.max_hp,
-                          move.hp,
+                          move.max_hp,
                           move.power,
                           move.attack_range,
                           move.speed,
                           move.sight,
                           move.energy,
                           move.movement,
-                          move.player,
+                          bot.player,
                           move.message,
                           controller,
                           move.special_stats,
@@ -882,6 +883,17 @@ class Bot:
             moves: {MoveType -> [Move]}
         """
         return self.controller.get_moves()
+    
+    def __str__(self):
+        return 'Bot at ({}, {}),\n'.format(self.coords[0], self.coords[1]) + \
+               'hp={}, max_hp={},\n'.format(self.max_hp, self.hp) + \
+               'power={}, attack_range={},\n'.format(self.power, self.attack_range) + \
+               'speed={},\n'.format(self.speed) + \
+               'sight={},\n'.format(self.sight) + \
+               'energy={},\n'.format(self.energy) + \
+               'movement={},\n'.format(self.movement) + \
+               'player={},\n'.format(self.player) + \
+               'message={}'.format(self.message)
 
 class BotView:
     def __init__(self,
@@ -923,6 +935,17 @@ class BotView:
                 raise RuntimeError(err_message)
         
         self.__dict__[name] = val
+    
+    def __str__(self):
+        return 'Bot view at ({}, {}),\n'.format(self.coords[0], self.coords[1]) + \
+               'hp={}, max_hp={},\n'.format(self.max_hp, self.hp) + \
+               'power={}, attack_range={},\n'.format(self.power, self.attack_range) + \
+               'speed={},\n'.format(self.speed) + \
+               'sight={},\n'.format(self.sight) + \
+               'energy={},\n'.format(self.energy) + \
+               'movement={},\n'.format(self.movement) + \
+               'player={},\n'.format(self.player) + \
+               'message=' + self.message
 
 class EnergySource:
     def __init__(self, coords,amount):
@@ -935,6 +958,10 @@ class EnergySource:
         Return the object to be given to the bot code.
         """
         return self.cached_view
+    
+    def __str__(self):
+        return 'Energy Source at ({}, {}), amount={}'\
+               .format(self.coords[0], self.coords[1], self.amount)
 
 class EnergySourceView:
     def __init__(self, coords, amount):
@@ -950,3 +977,7 @@ class EnergySourceView:
                 raise RuntimeError(err_message)
         
         self.__dict__[name] = val
+    
+    def __str__(self):
+        return 'Energy Source view at ({}, {}), amount={}'\
+               .format(self.coords[0], self.coords[1], self.amount)

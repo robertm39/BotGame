@@ -21,7 +21,7 @@ def get_base_cost(max_hp, power, attack_range, speed, sight, movement):
     base = max_hp + power + 2**speed - 1
     
     range_mult = 0.75 + (attack_range / 4.0)
-    sight_mult = 0.2 if speed == 0 else 0.5 + sight/2.0
+    sight_mult = 0.2 if sight == 0 else 0.5 + sight/2.0
     movement_mult = 0.5 + movement/2.0
     
     result = math.floor(base * range_mult * sight_mult * movement_mult)
@@ -69,7 +69,6 @@ class BuildMove(bg.Move):
                  sight,
                  energy,
                  movement,
-                 player,
                  message,
                  **special_stats):
         self.direction = direction
@@ -80,7 +79,6 @@ class BuildMove(bg.Move):
         self.sight = sight
         self.energy = energy
         self.movement = movement
-        self.player = player
         self.message = message
         self.special_stats_dict = special_stats.copy() #{name: val}
         self.special_stats = list()
