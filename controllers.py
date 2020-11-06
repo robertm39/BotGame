@@ -21,7 +21,7 @@ class SitController:
         return dict()
 
 class WalkController:
-    def __init__(self, direction):
+    def __init__(self, direction=bg.Direction.RIGHT):
         self.direction = direction
     
     def give_view(self, view, owner_view):
@@ -73,7 +73,7 @@ def get_approach_moves(current, target):
     return list()
 
 class SeekAndFightController:
-    def __init__(self, message=''):
+    def __init__(self):
         # self.direction = direction
         # self.fight = fight
         
@@ -150,7 +150,7 @@ class SeekAndFightController:
         return moves
 
 class SeekEnergyController:
-    def __init__(self, message=''):
+    def __init__(self):
         self.view = None
         self.owner_view = None
         self.target_coords = None
@@ -205,5 +205,93 @@ class SeekEnergyController:
                                           message='')
             moves[bg.MoveType.BUILD] = [build_move]
        
+        return moves
+
+class ChainEnergyController:
+    def __init__(self):
+        self.view = None
+        self.owner_view = None
+        self.direction = None
+    
+    def give_view(self, view, owner_view):
+        self.view = view
+        self.owner_view = owner_view
+    
+    def get_moves(self):
+        if not self.direction:
+            message = self.owner_view.message
+            self.direction = bg.Direction.__dict__.get(message, None)
+        
+        if not self.direction:
+            return
+        
+        coords = self.owner_view.coords
+        target_coords = bg.coords_in_direction(coords, self.direction)
+        items_at = self.view.get(target_coords, list())
+        bots_at = [b for b in items_at if b.type == 'Bot']
+        
+        moves = dict()
+        #If there's a bot there, give it energy
+        #otherwise try to build a bot
+        if bots_at:
+            give_energy_move = bg.Move(bg.MoveType.GIVE_ENERGY,
+                                       direction=self.direction,
+                                       amount=self.owner_view.energy)
+            moves[bg.MoveType.GIVE_ENERGY] = [give_energy_move]
+            # print('giving energy')
+        else:
+            build_move = builds.BuildMove(self.direction,
+                                          max_hp=10,
+                                          power=10,
+                                          attack_range=1,
+                                          speed=0,
+                                          sight=5,
+                                          energy=0,
+                                          movement=1,
+                                          message=self.owner_view.message)
+            moves[bg.MoveType.BUILD] = [build_move]
+            # print('building')
+        
+        return moves
+
+class GiveLifeController:
+    def __init__(self):
+        self.view = None
+        self.owner_view = None
+        self.direction = None
+    
+    def give_view(self, view, owner_view):
+        self.view = view
+        self.owner_view = owner_view
+    
+    def get_moves(self):
+        print('energy: {}'.format(self.owner_view.energy))
+        
+        if not self.direction:
+            message = self.owner_view.message
+            self.direction = bg.Direction.__dict__.get(message, None)
+        
+        if not self.direction:
+            return
+        
+        coords = self.owner_view.coords
+        target_coords = bg.coords_in_direction(coords, self.direction)
+        items_at = self.view.get(target_coords, list())
+        bots_at = [b for b in items_at if b.type == 'Bot']
+        
+        moves = dict()
+        #If there's a bot there, give it energy
+        #otherwise try to build a bot
+        if bots_at:
+            give_life_move = bg.Move(bg.MoveType.GIVE_LIFE,
+                                     direction=self.direction,
+                                     amount=self.owner_view.energy)
+            moves[bg.MoveType.GIVE_LIFE] = [give_life_move]
+            # print('giving energy')
+        else:
+            heal_move = bg.Move(bg.MoveType.HEAL,
+                                amount=self.owner_view.energy)
+            moves[bg.MoveType.HEAL] = [heal_move]
+            # print('building')
         
         return moves

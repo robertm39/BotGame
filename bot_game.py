@@ -254,6 +254,11 @@ class Battlefield:
     
     def is_in_bounds(self, coords):
         return is_in_bounds(coords, 0, self.width-1, 0, self.height-1)
+    
+    def test_energys_all_positive(self):
+        for bot in self.bots:
+            if bot.energy < 0:
+                raise ValueError('bot with negative energy:\n{}'.format(bot))
 
 class GameManager:
     def __init__(self, battlefield):
@@ -293,7 +298,16 @@ class GameManager:
         Return:
             moves {MoveType: {Bot: [Move]}}
         """
-        all_moves = {bot:bot.get_moves() for bot in self.battlefield.bots}
+        # all_moves = {bot:bot.get_moves() for bot in self.battlefield.bots}
+        all_moves = dict()
+        for bot in self.battlefield.bots:
+            try:
+                all_moves[bot] = bot.get_moves()
+            except Exception as err:
+                #If the bot's get_moves() method throws an exception,
+                #The bot just doesn't do anything
+                print('bot threw exception {}:\n{}'.format(err, bot))
+                all_moves[bot] = dict()
         
         result = {t:dict() for t in MoveType}
         
@@ -361,14 +375,23 @@ class GameManager:
             
             move = moves[0]
             
-            t_coords = coords_in_direction(bot.coords, move.direction)
+            try:
+                m_dir = move.direction
+                m_amount = move.amount
+            except Exception as err:
+                print('exception when processing GIVE_ENERGY move:')
+                print(err)
+                continue
             
-            targeted_bots = filter(lambda x: type(x) is Bot, map[t_coords])
+            t_coords = coords_in_direction(bot.coords, m_dir)
+            
+            items_at = self.battlefield.at(t_coords)
+            targeted_bots = [b for b in items_at if type(b) is Bot]
             if not targeted_bots:
                 continue
             
             targeted_bot = targeted_bots[0]
-            amount = move.amount
+            amount = m_amount
             
             #Check whether the transfers were valid later
             #this allows transfers to be chained
@@ -688,34 +711,44 @@ class GameManager:
                 #Can't build a bot where there already is a bot
                 continue
             
-            # print('move.cost: {}'.format(move.cost))
-            if move.cost > bot.energy:
-                #The bot cannot afford the build, so it doesn't happen
+            try:
+                if move.cost > bot.energy:
+                    #The bot cannot afford the build, so it doesn't happen
+                    continue
+            except Exception as err:
+                print('Exception when processing BUILD move:')
+                print(err)
                 continue
-            
-            bot.energy -= move.cost
             
             #Make a new controller of the same type
             #real controllers will need inits that only take message
             #as an argument
-            controller = type(bot.controller)(move.message)
+            controller = type(bot.controller)()
             
-            new_bot = Bot(t_coords,
-                          move.max_hp,
-                          move.max_hp,
-                          move.power,
-                          move.attack_range,
-                          move.speed,
-                          move.sight,
-                          move.energy,
-                          move.movement,
-                          bot.player,
-                          move.message,
-                          controller,
-                          move.special_stats,
-                          **move.special_stats_dict)
-            
-            self.battlefield.add_bot(new_bot)
+            try:
+                new_bot = Bot(t_coords,
+                              move.max_hp,
+                              move.max_hp,
+                              move.power,
+                              move.attack_range,
+                              move.speed,
+                              move.sight,
+                              move.energy,
+                              move.movement,
+                              bot.player,
+                              move.message,
+                              controller,
+                              move.special_stats,
+                              **move.special_stats_dict)
+                
+                self.battlefield.add_bot(new_bot)
+                
+                bot.energy -= move.cost
+            except Exception as err:
+                print('Exception when processing BUILD move:')
+                print(err)
+                continue
+                
     
     def advance(self):
         """

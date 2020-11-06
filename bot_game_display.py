@@ -11,7 +11,7 @@ import bot_game
 import controllers
 
 class BotGameDisplayFrame(tk.Frame):
-    def __init__(self, parent, game_manager, square_size=10):
+    def __init__(self, parent, game_manager, square_size=10, frame_delay=1000):
         tk.Frame.__init__(self, parent, background='white')
         
         self.parent = parent
@@ -20,6 +20,8 @@ class BotGameDisplayFrame(tk.Frame):
         self.battlefield = game_manager.battlefield
         self.game_manager = game_manager
         self.square_size = square_size
+        
+        self.frame_delay = frame_delay
         
         self.init_gui()
     
@@ -134,20 +136,15 @@ class BotGameDisplayFrame(tk.Frame):
     def loop(self):
         self.update_frame()
         self.frame_num += 1
-        print('Frame {}'.format(self.frame_num))
-        self.after(1000, self.loop)
+        print('\nFrame {}'.format(self.frame_num))
+        self.after(self.frame_delay, self.loop)
     
     def start_loop(self):
         self.frame_num = 0
         print('Frame {}'.format(self.frame_num))
-        self.after(1000, self.loop)
+        self.after(self.frame_delay, self.loop)
 
-def main():
-    root = tk.Tk()
-    root.geometry('600x600+400+100')
-    
-    battlefield = bot_game.Battlefield(10, 10)
-    
+def test_1(battlefield):
     energy_source_1 = bot_game.EnergySource((1, 1), 10)
     energy_source_2 = bot_game.EnergySource((2, 3), 10)
     energy_source_3 = bot_game.EnergySource((4, 2), 10)
@@ -159,7 +156,6 @@ def main():
     battlefield.add_item(energy_source_4)
     battlefield.add_item(energy_source_5)
     
-    # ctlr_1 = controllers.WalkController(bot_game.Direction.RIGHT)
     ctlr_1 = controllers.SeekEnergyController()
     bot_1 = bot_game.Bot(coords=(0, 0),
                          max_hp=10,
@@ -174,29 +170,102 @@ def main():
                          message='',
                          special_stats=dict(),
                          controller=ctlr_1)
-    # print(bot_1)
-    # return
     battlefield.add_item(bot_1)
+
+def give_energy_test_1(battlefield):
+    """
+    Test GIVE_ENERGY processing.
+    """
+    energy_source = bot_game.EnergySource((0, 0), 10)
+    battlefield.add_item(energy_source)
     
-    # ctlr_2 = controllers.SeekAndFightController()
-    # bot_2 = bot_game.Bot(coords=(5, 0),
-    #                      max_hp=100,
-    #                      hp=100,
-    #                      power=20,
-    #                      attack_range=1,
-    #                      speed=1,
-    #                      sight=5,
-    #                      energy=10,
-    #                      movement=1,
-    #                      player='2',
-    #                      message='',
-    #                      special_stats=dict(),
-    #                      controller=ctlr_2)
-    # battlefield.add_item(bot_2)
+    controller = controllers.ChainEnergyController()
+    bot = bot_game.Bot(coords=(0, 0),
+                       max_hp=10,
+                       hp=10,
+                       power=10,
+                       attack_range=1,
+                       speed=0,
+                       sight=5,
+                       energy=0,
+                       movement=1,
+                       player='1',
+                       message='RIGHT',
+                       special_stats=dict(),
+                       controller=controller)
+    battlefield.add_item(bot)
+
+def heal_test_1(battlefield):
+    energy_source = bot_game.EnergySource((0, 0), 10)
+    battlefield.add_item(energy_source)
+    
+    heal_controller = controllers.GiveLifeController()
+    heal_bot = bot_game.Bot(coords=(0, 0),
+                            max_hp=100,
+                            hp=10,
+                            power=10,
+                            attack_range=1,
+                            speed=0,
+                            sight=5,
+                            energy=0,
+                            movement=1,
+                            player='1',
+                            message='RIGHT',
+                            special_stats=dict(),
+                            controller=heal_controller)
+    
+    battlefield.add_item(heal_bot)
+
+def give_life_test_1(battlefield):
+    energy_source = bot_game.EnergySource((0, 0), 10)
+    battlefield.add_item(energy_source)
+    
+    heal_controller = controllers.GiveLifeController()
+    heal_bot = bot_game.Bot(coords=(0, 0),
+                            max_hp=100,
+                            hp=10,
+                            power=10,
+                            attack_range=1,
+                            speed=0,
+                            sight=5,
+                            energy=0,
+                            movement=1,
+                            player='1',
+                            message='RIGHT',
+                            special_stats=dict(),
+                            controller=heal_controller)
+    battlefield.add_item(heal_bot)
+    
+    sit_controller = controllers.SitController()
+    hurt_bot = bot_game.Bot(coords=(1, 0),
+                            max_hp=100,
+                            hp=10,
+                            power=10,
+                            attack_range=1,
+                            speed=0,
+                            sight=5,
+                            energy=0,
+                            movement=1,
+                            player='1',
+                            message='RIGHT',
+                            special_stats=dict(),
+                            controller=sit_controller)
+    battlefield.add_item(hurt_bot)
+
+def main():
+    root = tk.Tk()
+    root.geometry('600x600+400+100')
+    
+    battlefield = bot_game.Battlefield(10, 10)
+    
+    give_life_test_1(battlefield)
     
     game_manager = bot_game.GameManager(battlefield)
     
-    frame = BotGameDisplayFrame(root, game_manager, square_size=50)
+    frame = BotGameDisplayFrame(root,
+                                game_manager,
+                                square_size=50,
+                                frame_delay=1000)
     tk.app = frame
     
     frame.start_loop()
