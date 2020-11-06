@@ -9,6 +9,29 @@ from enum import Enum
 
 import effects as eff
 
+#This function will used for line-of-sight
+def directions(coords):
+    x, y = coords
+    
+    result = list()
+    if x >= 0:
+        result.append(Direction.RIGHT)
+    elif x <= 0:
+        result.append(Direction.LEFT)
+    
+    if y >= 0:
+        result.append(Direction.DOWN)
+    elif y <= 0:
+        result.append(Direction.UP)
+    
+    return result
+
+def diff(coords_1, coords_2):
+    x_1, y_1 = coords_1
+    x_2, y_2 = coords_2
+    
+    return (x_2 - x_1, y_2 - y_1)
+
 def is_in_bounds(coords, min_x, max_x, min_y, max_y):
     """
     Return whether the given coords are within the given bounds.
@@ -119,6 +142,7 @@ class Move:
 
 #GIVE ENERGY:
 #    direction: Direction
+#    amount: int
 
 #GIVE LIFE:
 #    direction: Direction
@@ -134,7 +158,7 @@ class Move:
 #    direction: Direction
 
 #BUILD:
-#TODO
+#direction and other stuff
 
 def coords_in_direction(coords, direction):
     x, y = coords
@@ -227,7 +251,44 @@ class Battlefield:
             bot [Bot]: The bot to return the visible coords of.
         """
         #TODO incorporate line-of-sight checks
-        return coords_within_distance(bot.coords, bot.sight)
+        
+        #Start with the robot's square
+        #expand outwards in 'straight' lines, not expanding into squares
+        #with a Tall bot
+        #any line that goes between two points in the minimal distance is
+        #straight
+        #even if it turns
+        #This is because the geometry of the battlefield is not euclidian
+        #||x, y|| = |x| + |y| instead of sqrt(x^2 + y^2)
+        #This makes it so there are several straight lines between any two
+        #points
+        #and also there are infinitely many lines parallel to any line
+        
+        result = [bot.coords]
+        outer_coords = [bot.coords]
+        for _ in range(bot.sight):
+            new_coords = set()
+            for coords in outer_coords:
+                for d in directions(coords):
+                    t_coords = coords_in_direction(coords, d)
+                    bots_at = self.bots_at(t_coords)
+                    
+                    #If there aren't any bots there, it can be seen into
+                    if not bots_at:
+                        new_coords.add(t_coords)
+                        continue
+                    
+                    bot = bots_at[0]
+                    #If the bot is tall, the square can't be seen into
+                    if hasattr(bot, 'tall'):
+                        continue
+                    new_coords.add(t_coords)
+            
+            result.extend(new_coords)
+            outer_coords = list(new_coords)
+        
+        return result
+        # return coords_within_distance(bot.coords, bot.sight)
     
     def set_coords(self, item, coords):
         """
@@ -366,11 +427,13 @@ class GameManager:
             moves_from_bots {Bot: [Move]}: The GIVE_ENERGY moves to process.
         """
         
-        #TODO add check for whether the bot can give energy
         #All the bots that might end up with negative total energy
         possible_negatives = []
         for bot, moves in moves_from_bots.items():
             if not moves:
+                continue
+            if hasattr(bot, 'no_give_energy'):
+                print('no_give_energy bot:\n{}'.format(bot))
                 continue
             
             move = moves[0]
@@ -424,13 +487,14 @@ class GameManager:
                 #but its energy is still negative, which is unacceptable
                 raise ValueError('bot.energy: {}'.format(bot.energy))
             
+            #Undo just enough energy transfer so that the bot ends up with
+            #positive energy
             targeted_bot = targeted_bots[0]
-            amount = move.amount
+            undo_amount = -bot.energy
+            # amount = move.amount
             
-            #Undo the transfer if the transferring bot ended up with
-            #negative total energy
-            bot.energy += amount
-            targeted_bot.energy -= amount
+            bot.energy += undo_amount
+            targeted_bot.energy -= undo_amount
             
             #Now maybe the targeted bot has negative total energy,
             #so any transfers it did will also need to be undone
@@ -446,11 +510,14 @@ class GameManager:
         Arguments:
             moves_from_bots {Bot: [Move]}: All the GIVE_LIFE orders.
         """
-        #TODO add check for whether the bot can give life
+        
         for bot, moves in moves_from_bots.items():
             if not moves:
                 continue
             if bot.energy == 0:
+                continue
+            if not hasattr(bot, 'heal'):
+                print('no heal bot:\n{}'.format(bot))
                 continue
             
             move = moves[0]
@@ -485,12 +552,14 @@ class GameManager:
         Arguments:
             moves_from_bots {Bot: [Move]}: All the HEAL orders to process.
         """
-        #TODO add check for whether the bot can heal
         
         for bot, moves in moves_from_bots.items():
             if not moves:
                 continue
             if bot.energy == 0:
+                continue
+            if not hasattr(bot, 'heal'):
+                print('no heal bot:\n{}'.format(bot))
                 continue
             
             move = moves[0]
@@ -514,7 +583,8 @@ class GameManager:
         if not moves_from_bots:
             return
         
-        #TODO check for whether bot can attack
+        #all bots can attack, some just have zero power
+        #so there's no need to check whether bots can attack
         speeds = list(set([b.speed for b in moves_from_bots]))
         speeds.sort(reverse=True)
         
@@ -567,8 +637,6 @@ class GameManager:
             moves {Bot: [Move]}: All the MOVE moves to process.
         """
         
-        #TODO check how many moves a bot can have
-        
         #For multiple moves:
         #first do each bot's first move, then each second move, etc.
         #bots w\ higher speed have priority
@@ -594,7 +662,12 @@ class GameManager:
             for bot in moving_bots:
                 moves = moves_from_bots[bot]
                 
-                if not len(moves) > i:
+                # if not len(moves) > i:
+                if len(moves) <= i:
+                    not_moving.append(bot)
+                    continue
+                #Check if the bot has enough movement
+                if bot.movement <= i:
                     not_moving.append(bot)
                     continue
                 

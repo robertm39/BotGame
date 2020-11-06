@@ -59,6 +59,22 @@ class BurnStat(SpecialStat):
         return 1 + self.value * 0.5
 STATS_FROM_NAMES['burn'] = BurnStat
 
+class NoGiveEnergyStat(SpecialStat):
+    def __init__(self):
+        self.value = 1
+    
+    def multiplier(self):
+        return 0.9
+STATS_FROM_NAMES['no_give_energy'] = NoGiveEnergyStat
+
+class HealStat(SpecialStat):
+    def __init__(self):
+        self.value = 1
+        
+    def multiplier(self):
+        return 2.0
+STATS_FROM_NAMES['heal'] = HealStat
+
 class BuildMove(bg.Move):
     def __init__(self,
                  direction,
