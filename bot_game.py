@@ -16,12 +16,12 @@ def directions(coords):
     result = list()
     if x >= 0:
         result.append(Direction.RIGHT)
-    elif x <= 0:
+    if x <= 0:
         result.append(Direction.LEFT)
     
     if y >= 0:
         result.append(Direction.DOWN)
-    elif y <= 0:
+    if y <= 0:
         result.append(Direction.UP)
     
     return result
@@ -250,26 +250,34 @@ class Battlefield:
         Arguments:
             bot [Bot]: The bot to return the visible coords of.
         """
-        #TODO incorporate line-of-sight checks
-        
         #Start with the robot's square
         #expand outwards in 'straight' lines, not expanding into squares
         #with a Tall bot
         #any line that goes between two points in the minimal distance is
-        #straight
-        #even if it turns
+        #straight, even if it turns
         #This is because the geometry of the battlefield is not euclidian
         #||x, y|| = |x| + |y| instead of sqrt(x^2 + y^2)
         #This makes it so there are several straight lines between any two
         #points
         #and also there are infinitely many lines parallel to any line
+        # print('bot.coords: {}'.format(bot.coords))
         
         result = [bot.coords]
         outer_coords = [bot.coords]
         for _ in range(bot.sight):
             new_coords = set()
             for coords in outer_coords:
-                for d in directions(coords):
+                # print('')
+                # print('bot.coords: {}'.format(bot.coords))
+                d_coords = diff(bot.coords, coords)
+                # if coords == (11, 10):
+                    # print('bot.coords: {}'.format(bot.coords))
+                    # print(bot.coords)
+                    # print(d_coords)
+                    # print(directions(d_coords))
+                # print(d_coords)
+                for d in directions(d_coords):
+                    # print(d)
                     t_coords = coords_in_direction(coords, d)
                     bots_at = self.bots_at(t_coords)
                     
@@ -278,9 +286,9 @@ class Battlefield:
                         new_coords.add(t_coords)
                         continue
                     
-                    bot = bots_at[0]
+                    bot_at = bots_at[0]
                     #If the bot is tall, the square can't be seen into
-                    if hasattr(bot, 'tall'):
+                    if hasattr(bot_at, 'tall'):
                         continue
                     new_coords.add(t_coords)
             
@@ -314,9 +322,19 @@ class Battlefield:
         item.coords = coords
     
     def is_in_bounds(self, coords):
+        """
+        Return whether the given coords are within
+        the bounds of this battlefield.
+        
+        Arguments:
+            coords (int, int): The coords to test.
+        """
         return is_in_bounds(coords, 0, self.width-1, 0, self.height-1)
     
     def test_energys_all_positive(self):
+        """
+        Raise a ValueError if any bots have negative energy.
+        """
         for bot in self.bots:
             if bot.energy < 0:
                 raise ValueError('bot with negative energy:\n{}'.format(bot))
@@ -811,7 +829,7 @@ class GameManager:
                               bot.player,
                               move.message,
                               controller,
-                              move.special_stats,
+                              # move.special_stats,
                               **move.special_stats_dict)
                 
                 self.battlefield.add_bot(new_bot)
@@ -854,7 +872,7 @@ class Bot:
                  player,
                  message,
                  controller,
-                 special_stats,
+                 # special_stats,
                  **special_stats_dict):
         
         self.coords = coords
@@ -870,7 +888,7 @@ class Bot:
         self.message = message
         self.controller = controller
         
-        self.special_stats = special_stats.copy()
+        # self.special_stats = special_stats.copy()
         self.special_stats_dict = special_stats_dict.copy()
         
         for stat, val in special_stats_dict.items():

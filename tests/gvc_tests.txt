@@ -1,0 +1,83 @@
+
+10 10 1
+ O 
+OBO
+ O 
+END
+
+10 10 0
+B
+END
+
+10 10 1
+ X 
+OBO
+ O 
+END
+
+10 10 2
+  O  
+ OOO 
+OOBOO
+ OOO 
+  O  
+END
+
+10 10 2
+     
+ OXO 
+OOBOO
+ OOO 
+  O  
+END
+
+10 10 3
+  O O  
+ OOXOO 
+OOOBOOO
+ OOOOO
+  OOO  
+   O   
+END
+
+10 10 2
+  O
+ OOO
+OOBX
+ OOO
+  O
+END
+
+10 10 10
+ X
+XBX
+ X
+END
+
+10 10 3
+  O
+ XOO
+XBOOO
+ XOO
+  O
+END
+
+10 10 8
+        O
+       OOO
+      OOOOO
+     OOOOOOO
+    OOOOOOX
+   OOOOOOOX
+  OOOOOOOOX   
+ OOOOOOOOOXXXXXO
+OOOOOOOOBOOOOOOOO
+ OOOOOOOOOOOOOOO
+  OOOOOOOOOOOOO
+   OOOOOOOOOOO
+    OOOOOOOOO
+     OOOOOOO
+      OOOOO
+       OOO
+        O
+END
