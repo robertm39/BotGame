@@ -141,8 +141,15 @@ def read_gvc_test_cases(file_name='tests\\gvc_tests.txt'):
     return cases
 
 def get_visible_coords_test():
+    total = 0
+    successful = 0
     for case in read_gvc_test_cases():
-        get_visible_coords_test_one_case(*case)
+        total += 1
+        if get_visible_coords_test_one_case(*case):
+            successful += 1
+    
+    print('{} Tests, {} Succeeded, {} Failed'\
+          .format(total, successful, total-successful))
 
 def main():
     get_visible_coords_test()
