@@ -7,6 +7,8 @@ Created on Sat Nov  7 11:46:22 2020
 
 import bot_game
 import controllers
+import effects
+import builds
 
 def get_bot(coords,
             max_hp=1,
@@ -152,8 +154,43 @@ def get_visible_coords_test():
     print('{} Tests, {} Succeeded, {} Failed'\
           .format(total, successful, total-successful))
 
+def code_dict_test():
+    bot_1 = get_bot((1, 1))
+    bot_2 = get_bot((1, 2))
+    # bot_3 = get_bot((2, 1))
+    # bot_4 = get_bot((2, 2))
+    
+    code_dict = bot_game.CodeDict()
+    
+    code_1 = builds.Code([], [], [])
+    code_dict.register_code(code_1)
+    
+    #Whenever bot_1 attacks anything
+    code_2 = builds.Code([bot_1], [], [effects.AttackEffect])
+    code_dict.register_code(code_2)
+    
+    #Whenever bot_1 is damaged
+    code_3 = builds.Code([], [bot_2], [effects.DamageEffect])
+    code_dict.register_code(code_3)
+    
+    
+    
+    correct_result = [code_1]
+    result = code_dict[((1, 2), 3, 4)]
+    assert correct_result == result
+    
+    correct_result = {code_1, code_2}
+    result = set(code_dict[tuple([bot_1]), (1, 2), effects.AttackEffect])
+    assert correct_result == result
+    
+    correct_result = {code_1, code_3}
+    result = set(code_dict[tuple([None]), bot_2, effects.DamageEffect])
+    assert correct_result == result
+    print('All CodeDict tests succeeded')
+
 def main():
     get_visible_coords_test()
+    code_dict_test()
 
 if __name__ == '__main__':
     main()

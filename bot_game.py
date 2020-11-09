@@ -347,10 +347,11 @@ class CodeDict:
         self.codes_from_targets = {None:[]}
         self.codes_from_events = {None:[]}
     
-    def register_for_field(self, code, from_field, field):
+    def register_for_field(self, code, field, from_field):
         if not field:
-            self.from_field[None].append(code)
+            from_field[None].append(code)
         else:
+            
             for f in field:
                 if not f in from_field:
                     from_field[f] = [code]
@@ -380,22 +381,29 @@ class CodeDict:
         
     #     return result.copy()
     
-    def get_matches(self, spec):
+    def __getitem__(self, spec):
         sources, target, event = spec
         
         from_source = self.codes_from_sources[None].copy()
         for source in sources:
-            from_source.extend(self.codes_from_sources[source])
+            from_source.extend(self.codes_from_sources.get(source, []))
+        from_source = set(from_source)
+        # print('from_source: {}'.format(from_source))
         
         from_target = self.codes_from_targets[None] + \
-                      self.codes_from_targets[target]
+                      self.codes_from_targets.get(target, [])
+        from_target = set(from_target)
+        # print('from_target: {}'.format(from_target))
         
         from_event = self.codes_from_events[None] + \
-                     self.codes_from_events[event]
+                     self.codes_from_events.get(event, [])
+        from_event = set(from_event)
+        # print('from_event: {}'.format(from_event))
+        # print('')
         # s2 = set(self.get_matches_for_field(self.codes_from_targets, spec[1]))
         # s3 = set(self.get_matches_for_field(self.codes_from_events, spec[2]))
         
-        return set(from_source).intersection(set(from_target), set(from_event))
+        return list(from_source.intersection(from_target, from_event))
 
 class GameManager:
     def __init__(self, battlefield):
