@@ -9,6 +9,7 @@ import tkinter as tk
 
 import bot_game
 import controllers
+from tests import get_bot
 
 class BotGameDisplayFrame(tk.Frame):
     def __init__(self, parent, game_manager, square_size=10, frame_delay=1000):
@@ -168,7 +169,6 @@ def test_1(battlefield):
                          movement=1,
                          player='1',
                          message='',
-                         special_stats=dict(),
                          controller=ctlr_1)
     battlefield.add_item(bot_1)
 
@@ -253,22 +253,59 @@ def give_life_test_1(battlefield):
                             controller=sit_controller)
     battlefield.add_item(hurt_bot)
 
+def absorb_test_1(battlefield):
+    fight_controller_1 = controllers.SeekAndFightController()
+    absorb_bot = bot_game.Bot(coords=(0, 0),
+                              max_hp=200,
+                              hp=200,
+                              power=20,
+                              attack_range=1,
+                              speed=0,
+                              sight=5,
+                              energy=0,
+                              movement=1,
+                              player='1',
+                              message='RIGHT',
+                              controller=fight_controller_1,
+                              absorb=1)
+    
+    fight_controller_2 = controllers.SeekAndFightController()
+    plain_bot = bot_game.Bot(coords=(1, 0),
+                             max_hp=200,
+                             hp=200,
+                             power=20,
+                             attack_range=1,
+                             speed=0,
+                             sight=5,
+                             energy=0,
+                             movement=1,
+                             player='2',
+                             message='RIGHT',
+                             # absorb=1,
+                             controller=fight_controller_2)
+    
+    battlefield.add_bot(absorb_bot)
+    battlefield.add_bot(plain_bot)
+
 def main():
     root = tk.Tk()
     root.geometry('600x600+400+100')
     
     battlefield = bot_game.Battlefield(10, 10)
     
-    # test_1(battlefield)
-    # give_life_test_1(battlefield)
-    heal_test_1(battlefield)
     
     game_manager = bot_game.GameManager(battlefield)
+    
+    #You can only add bots to the battlefield after the game_manager is made
+    # test_1(battlefield)
+    # give_life_test_1(battlefield)
+    # heal_test_1(battlefield)
+    absorb_test_1(battlefield)
     
     frame = BotGameDisplayFrame(root,
                                 game_manager,
                                 square_size=50,
-                                frame_delay=1000)
+                                frame_delay=250)
     tk.app = frame
     
     frame.start_loop()

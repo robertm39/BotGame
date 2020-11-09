@@ -8,9 +8,9 @@ Created on Wed Oct 14 12:46:26 2020
 from enum import Enum
 
 import effects as eff
-import builds
 
 #This function will used for line-of-sight
+#I don't know what else for
 def directions(coords):
     x, y = coords
     
@@ -37,7 +37,7 @@ def is_in_bounds(coords, min_x, max_x, min_y, max_y):
     """
     Return whether the given coords are within the given bounds.
     
-    Arguments:
+    Parameters:
         coords (int, int): The coords to check.
         min_x (int): The minimum x-value allowed.
         max_x (int): The maximum x-value allowed.
@@ -62,7 +62,7 @@ def filter_in_bounds_coords(coordses, min_x, max_x, min_y, max_y):
     """
     Return the coords in coords_list within the given bounds.
     
-    Arguments:
+    Parameters:
         coords_list [(int, int)]: The coords to check.
         min_x (int): The minimum x-value allowed.
         max_x (int): The maximum x-value allowed.
@@ -75,7 +75,7 @@ def distance(coords_1, coords_2):
     """
     Return the distance between the two given coords.
     
-    Arguments:
+    Parameters:
         coords_1 (int, int): The first pair of coords.
         coords_2 (int, int): The second pair of coords.
     """
@@ -94,7 +94,7 @@ def coords_within_distance(coords,
     Return all the coords within the given distance of the given coords,
     as long as they are in the given bounds.
     
-    Arguments:
+    Parameters:
         coords (int, int): The coords to measure distance from.
         distance (int): The maximum distance.
         min_x (int): The minimum x-value allowed.
@@ -196,7 +196,7 @@ class Battlefield:
     
     def bots_at(self, coords):
         items_at = self.at(coords)
-        return [b for b in items_at if type(b) is Bot]
+        return [b for b in items_at if isinstance(b, Bot)]
     
     def get_items(self):
         return sum(self.map.values(), [])
@@ -212,7 +212,7 @@ class Battlefield:
         if not item.coords in self.map:
             raise ValueError('item.coords: {}'.format(item.coords))
         
-        if type(item) is Bot:
+        if isinstance(item, Bot):
             return self.add_bot(item)
         
         self.map[item.coords].append(item)
@@ -224,6 +224,8 @@ class Battlefield:
             
         if not bot.coords in self.map:
             raise ValueError('bot.coords: {}'.format(bot.coords))
+        
+        self.game_manager.handle_add_bot(bot)
         
         self.bots.append(bot)
         self.map[bot.coords].append(bot)
@@ -240,6 +242,8 @@ class Battlefield:
             print('bot not in self.bots: {}'.format(bot))
             return
         
+        self.game_manager.handle_remove_bot(bot)
+        
         self.bots.remove(bot)
         self.map[bot.coords].remove(bot)
         self.bots_from_speeds[bot.speed].remove(bot)
@@ -248,7 +252,7 @@ class Battlefield:
         """
         Return the coords visible to the given bot.
         
-        Arguments:
+        Parameters:
             bot [Bot]: The bot to return the visible coords of.
         """
         #Start with the robot's square
@@ -291,7 +295,7 @@ class Battlefield:
         """
         Return whether the given coords are visible for the given bot.
         
-        Arguments:
+        Parameters:
             bot Bot: The bot to check visibility for.
             t_coords (int, int): The coords to check visibility of.
         
@@ -306,7 +310,7 @@ class Battlefield:
         Move the item to the given coords, updating both the item's .coords
         attribute and the map.
         
-        Arguments:
+        Parameters:
             item: The item whose coords to change.
             coords (int, int): The coords to move the item to.
         """
@@ -329,7 +333,7 @@ class Battlefield:
         Return whether the given coords are within
         the bounds of this battlefield.
         
-        Arguments:
+        Parameters:
             coords (int, int): The coords to test.
         """
         return is_in_bounds(coords, 0, self.width-1, 0, self.height-1)
@@ -347,12 +351,13 @@ class CodeDict:
         self.codes_from_sources = {None:[]}
         self.codes_from_targets = {None:[]}
         self.codes_from_events = {None:[]}
+        
+        self.codes = list()
     
     def register_for_field(self, code, field, from_field):
         if not field:
             from_field[None].append(code)
         else:
-            
             for f in field:
                 if not f in from_field:
                     from_field[f] = [code]
@@ -360,11 +365,21 @@ class CodeDict:
                     from_field[f].append(code)
     
     def register_code(self, code):
+        """
+        Register the given code with the CodeDict.
+        
+        Parameters:
+            code Code: The code to register with the CodeDict.
+        """
+        if code in self.codes:
+            return
+        
+        self.codes.append(code)
         self.register_for_field(code, code.sources, self.codes_from_sources)
         self.register_for_field(code, code.targets, self.codes_from_targets)
         self.register_for_field(code, code.events, self.codes_from_events)
     
-    def remove_for_field(self, code, from_field, field):
+    def remove_for_field(self, code, field, from_field):
         if not field:
             self.from_field[None].remove(code)
         else:
@@ -372,9 +387,23 @@ class CodeDict:
                 from_field[f].remove(code)
     
     def remove_code(self, code):
+        """
+        Remove the given code from the CodeDict.
+        
+        Parameters:
+            code Code: The code to remove from the CodeDict.
+        """
+        if not code in self.codes:
+            raise ValueError('CodeDict.remove_code({}): {} not in CodeDict'\
+                             .format(code, code))
+        
+        self.codes.remove(code)
         self.remove_for_field(code, code.sources, self.codes_from_sources)
         self.remove_for_field(code, code.targets, self.codes_from_targets)
         self.remove_for_field(code, code.events, self.codes_from_events)
+    
+    def __iter__(self):
+        return self.codes.__iter__()
     
     def __getitem__(self, spec):
         sources, target, event = spec
@@ -383,20 +412,27 @@ class CodeDict:
         for source in sources:
             from_source.extend(self.codes_from_sources.get(source, []))
         from_source = set(from_source)
+        # print('from_source: {}'.format(from_source))
         
         from_target = self.codes_from_targets[None] + \
                       self.codes_from_targets.get(target, [])
         from_target = set(from_target)
+        # print('from_target: {}'.format(from_target))
         
         from_event = self.codes_from_events[None] + \
                      self.codes_from_events.get(event, [])
         from_event = set(from_event)
+        # print('from_event: {}'.format(from_event))
+        # print('')
         
         return list(from_source.intersection(from_target, from_event))
 
 class GameManager:
     def __init__(self, battlefield):
         self.battlefield = battlefield
+        
+        #This is mildly sketchy
+        self.battlefield.game_manager = self
         
         self.waiting_codes = list()
         self.triggered_codes = CodeDict()
@@ -409,6 +445,36 @@ class GameManager:
                               MoveType.ATTACK: self.process_attacks,
                               MoveType.MOVE: self.process_moves,
                               MoveType.BUILD: self.process_builds}
+    
+    def handle_add_bot(self, bot):
+        """
+        Do what needs to be done when a bot is added to the battlefield.
+        This includes registering all the bot's codes,
+        and may include more later.
+        
+        Parameters:
+            bot Bot: The bot that was added to the battlefield.
+        """
+        for code in bot.codes:
+            if isinstance(code, builds.ReplacementCode):
+                self.replacement_codes.register_code(code)
+            else:
+                self.triggered_codes.register_code(code)
+    
+    def handle_remove_bot(self, bot):
+        """
+        Do what needs to be done when a bot is removed from the battlefield.
+        This includes removing all the bot's codes,
+        and may include more later.
+        
+        Parameters:
+            bot Bot: The bot that was removed from the battlefield.
+        """
+        for code in bot.codes:
+            if isinstance(code, builds.ReplacementCode):
+                self.replacement_codes.remove_code(code)
+            else:
+                self.triggered_codes.remove_code(code)
     
     def give_bots_info(self):
         """
@@ -461,7 +527,7 @@ class GameManager:
         """
         Register the given effect into self.effects.
         
-        Arguments:
+        Parameters:
             effect Effect: The effect to register.
         """
         self.effects.append(effect)
@@ -477,7 +543,11 @@ class GameManager:
             bool: Whether any replacement codes were triggered.
         """
         spec = (tuple(effect.sources), effect.target, type(effect))
+        # print('spec: {}'.format(spec))
         replacements = self.replacement_codes[spec]
+        # if len(replacements) > 0:
+            # print('len(replacements): {}'.format(len(replacements)))
+            
         for replacement in replacements:
             if replacement.fits(effect):
                 #An effect can only be replaced once
@@ -503,24 +573,13 @@ class GameManager:
     
     def resolve_effects(self):
         """
-        Resolve all the effetcs in self.effects, first checking for replacement
+        Resolve all the effects in self.effects, first checking for replacement
         code and then for triggered code.
         """
         #I can't do a normal for loop because effects might be added
         while self.effects:
             effect = self.effects[0]
             del self.effects[0]
-            
-            # #See if any replacement codes apply
-            # replacements = self.replacement_codes[spec]
-            # replaced = False
-            # for replacement in replacements:
-            #     if replacement.fits(effect):
-            #         #An effect can only be replaced once
-            #         #by each replacement code
-            #         if not replacement in effect.sources:
-            #             replaced = True
-            #             replacement.trigger(self, effect)
             
             #Check for replacement codes, and if any trigger
             #don't resolve the effect
@@ -530,24 +589,18 @@ class GameManager:
             effect.resolve(self)
             
             self.check_triggered_codes(effect)
-            # #See if any triggered codes apply
-            # triggereds = self.triggered_codes[spec]
-            # for triggered in  triggereds:
-            #     if triggered.fits(effect):
-            #         triggered.trigger(self, effect)
     
-    def upkeep(self):
+    def supply_energy(self):
         """
-        Perform upkeep tasks, like giving energy to bots on energy sources.
+        Give energy to all bots on coords with an EnergySource.
         """
-        
         #Give energy to bots on energy sources
         for coords, items in self.battlefield.map.items():
-            sources = [i for i in items if type(i) is EnergySource]
+            sources = [i for i in items if isinstance(i, EnergySource)]
             if not sources:
                 continue
             
-            bots = [i for i in items if type(i) is Bot]
+            bots = [i for i in items if isinstance(i, Bot)]
             if not bots:
                 continue
             
@@ -557,11 +610,27 @@ class GameManager:
             self.register_effect(effect)
         self.resolve_effects()
     
+    def newturn_codes(self):
+        """
+        Call the new_turn function for all triggered and replacement codes.
+        """
+        for code in self.replacement_codes:
+            code.new_turn(self)
+        for code in self.triggered_codes:
+            code.new_turn(self)
+    
+    def upkeep(self):
+        """
+        Perform upkeep tasks, like giving energy to bots on energy sources.
+        """
+        self.supply_energy()
+        self.newturn_codes()
+    
     def process_give_energys(self, moves_from_bots):
         """
         Process the GIVE_ENERGY moves.
         
-        Arguments:
+        Parameters:
             moves_from_bots {Bot: [Move]}: The GIVE_ENERGY moves to process.
         """
         
@@ -587,7 +656,7 @@ class GameManager:
             t_coords = coords_in_direction(bot.coords, m_dir)
             
             items_at = self.battlefield.at(t_coords)
-            targeted_bots = [b for b in items_at if type(b) is Bot]
+            targeted_bots = [b for b in items_at if isinstance(b, Bot)]
             if not targeted_bots:
                 continue
             
@@ -616,8 +685,6 @@ class GameManager:
             
             t_coords = coords_in_direction(bot.coords, move.direction)
             
-            # items_at = self.battlefield.at(t_coords)
-            # targeted_bots = filter(lambda x: type(x) is Bot, items_at)
             targeted_bots = self.battlefield.bots_at(t_coords)
             
             if not targeted_bots:
@@ -645,7 +712,7 @@ class GameManager:
         """
         Process all the GIVE_LIFE orders.
         
-        Arguments:
+        Parameters:
             moves_from_bots {Bot: [Move]}: All the GIVE_LIFE orders.
         """
         
@@ -659,12 +726,7 @@ class GameManager:
                 continue
             
             move = moves[0]
-            
             t_coords = coords_in_direction(bot.coords, move.direction)
-            
-            
-            # items_at = self.battlefield.at(t_coords)
-            # targeted_bots = filter(lambda x: type(x) is Bot, items_at)
             targeted_bots = self.battlefield.bots_at(t_coords)
             
             if not targeted_bots:
@@ -687,7 +749,7 @@ class GameManager:
         """
         Process all the HEAL orders given.
         
-        Arguments:
+        Parameters:
             moves_from_bots {Bot: [Move]}: All the HEAL orders to process.
         """
         
@@ -715,7 +777,7 @@ class GameManager:
         """
         Process all the attack moves given.
         
-        Arguments:
+        Parameters:
             attacks {Bot: [Move]}: All the ATTACK moves to process.
         """
         if not moves_from_bots:
@@ -759,7 +821,7 @@ class GameManager:
             #Remove all dead bots
             for coords in attacked_coords:
                 items = self.battlefield.at(coords)
-                bots = [i for i in items if type(i) is Bot]
+                bots = [i for i in items if isinstance(i, Bot)]
                 if not bots:
                     continue
                 
@@ -775,7 +837,7 @@ class GameManager:
         
         Bots with higher speed have priority for movement.
         
-        Arguments:
+        Parameters:
             moves {Bot: [Move]}: All the MOVE moves to process.
         """
         
@@ -818,13 +880,10 @@ class GameManager:
                 new_coords = coords_in_direction(bot.coords, direction)
                 
                 #Check if this is in bounds
-                # if not new_coords in self.battlefield.map:
                 if not self.battlefield.is_in_bounds(new_coords):
                     continue
                 
                 #Check if this is a head-on move
-                # items_at = self.at_new_coo
-                # bots_at = [b for b in self.at(new_coords) if type(b) is Bot]
                 bots_at = self.battlefield.bots_at(new_coords)
                 
                 unmoved_at = [b for b in bots_at if not b in already_moved]
@@ -862,8 +921,6 @@ class GameManager:
             #Then undo unsuccessful moves
             packed_coords = set()
             for bot in moving_bots:
-                # items_at = self.at(bot.coords)
-                # num_bots_at = len([b for b in items_at if type(b) is Bot])
                 num_bots_at = len(self.battlefield.bots_at(bot.coords))
                 
                 if(num_bots_at >= 2):
@@ -874,8 +931,6 @@ class GameManager:
                 packed_coord = packed_coords[0]
                 del packed_coords[0]
                 
-                # items_at = self.at(packed_coord)
-                # bots_at = [b for b in items_at if type(b) is Bot]
                 bots_at = self.battlefield.bots_at(packed_coord)
                 
                 moved_bots = [b for b in bots_at if b in moved_this_time]
@@ -899,8 +954,6 @@ class GameManager:
                     
                     #Check if this spot is crowded now
                     if not coords in packed_coords:
-                        # items_at = self.at(old_coords)
-                        # bots_at = [b for b in items_at if type(b) is Bot]
                         bots_at = self.battlefield.bots_at(old_coords)
                         
                         if len(bots_at) >= 2:
@@ -912,7 +965,7 @@ class GameManager:
         """
         Process the build orders.
         
-        Arguments:
+        Parameters:
             moves_from_bots {Bot: [Move]}: All the build orders to process.
         """
         
@@ -986,6 +1039,7 @@ class GameManager:
             
             self.process_funcs[move_type](moves_from_bots)
 
+import builds
 class Bot:
     def __init__(self,
                  coords,
@@ -1000,7 +1054,6 @@ class Bot:
                  player,
                  message,
                  controller,
-                 # special_stats,
                  **special_stats_dict):
         
         self.coords = coords
@@ -1016,21 +1069,23 @@ class Bot:
         self.message = message
         self.controller = controller
         
-        # self.special_stats = special_stats.copy()
         self.special_stats_dict = special_stats_dict.copy()
         self.special_stats = list()
         
+        self.codes = list()
+        
         for stat, val in special_stats_dict.items():
-            # print('{}, {}'.format(stat, val))
             self.__setattr__(stat, val)
-            self.special_stats.append(builds.STATS_FROM_NAMES[stat](val))
+            special_stat = builds.STATS_FROM_NAMES[stat](val, self)
+            self.special_stats.append(special_stat)
+            self.codes.extend(special_stat.get_codes())
     
     def increase_hp(self, amount):
         """
         Increase the bot.hp by the nonnegative amount given.
         The bot.hp will remain <= bot.max_hp.
         
-        Arguments:
+        Parameters:
             amount int: The amount to increase hp by. Must be nonnegative.
         
         Return:
@@ -1048,7 +1103,7 @@ class Bot:
         Decrease the bot.hp by the nonnegative amount given.
         THe bot.hp will remain >= 0.
         
-        Arguments:
+        Parameters:
             amount int: The amount to decrease hp by. Must be nonnegative.
         
         Return:
@@ -1067,7 +1122,7 @@ class Bot:
         Change the bot's hp by the given amount.
         It will remain that 0 <= bot.hp <= bot.max_hp
         
-        Arguments:
+        Parameters:
             amount int: The amount to change hp by.
         
         Return:
@@ -1084,7 +1139,7 @@ class Bot:
         """
         Take the given nonnegative amount of damage.
         
-        Arguments:
+        Parameters:
             amount int: The amount of damage to take. Must be nonnegative.
         
         Return:
@@ -1105,6 +1160,12 @@ class Bot:
         return self.hp <= 0
     
     def view(self):
+        """
+        Return the view that will be given to controllers.
+        
+        Return:
+            BotView: The view of the bot that will be given to controllers.
+        """
         result = BotView(coords=self.coords,
                          max_hp=self.max_hp,
                          hp=self.hp,
@@ -1125,7 +1186,7 @@ class Bot:
         Give the controller the view of the battlefield along with this
         bot's coords.
         
-        Arguments:
+        Parameters:
             view {(int, int): [item.view() return]}: The battlefield view.
         """
         self.controller.give_view(view, self.view())

@@ -37,7 +37,7 @@ def get_approach_moves(current, target):
     Return a move that moves toward a coord with the given displacement from
     the current coord.
     
-    Arguments:
+    Parameters:
         x_diff int: The target_coords.x - current_coords.x
         y_diff int: The target_coords.y - current_coords.y
     """
@@ -104,6 +104,7 @@ class SeekAndFightController:
         
         #If there are no enemies, hold
         if not enemies:
+            # print('No enemies')
             return dict()
             
         closest_enemy = enemies[0]

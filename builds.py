@@ -8,6 +8,7 @@ Created on Fri Oct 30 16:39:48 2020
 import math
 
 import bot_game as bg
+import effects
 
 BASE_STATS = ('max_hp',
               'power',
@@ -29,60 +30,6 @@ def get_base_cost(max_hp, power, attack_range, speed, sight, movement):
     #Every unit must cost at least one energy
     return max(1, result)
 
-class SpecialStat:
-    pass
-
-STATS_FROM_NAMES = dict()
-
-#I'll actually implement this later
-#for now I'll just have this
-class TallStat(SpecialStat):
-    def __init__(self, _):
-        #This is a binary stat
-        #Either you have it or you don't
-        self.value = 1
-    
-    def multiplier(self):
-        return 1.5
-STATS_FROM_NAMES['tall'] = TallStat
-
-class BurnStat(SpecialStat):
-    def __init__(self, value):
-        self.value = value
-        
-        if self.value < 1:
-            raise ValueError('value: {}'.format(value))
-        if round(self.value) != self.value:
-            raise ValueError('value: {}'.format(value))
-    
-    def multiplier(self):
-        return 1 + self.value * 0.5
-STATS_FROM_NAMES['burn'] = BurnStat
-
-class NoGiveEnergyStat(SpecialStat):
-    def __init__(self, _):
-        self.value = 1
-    
-    def multiplier(self):
-        return 0.9
-STATS_FROM_NAMES['no_give_energy'] = NoGiveEnergyStat
-
-class NoBuildStat(SpecialStat):
-    def __init__(self, _):
-        self.value = 1
-    
-    def multiplier(self):
-        return 0.9
-STATS_FROM_NAMES['no_build'] = NoBuildStat
-
-class HealStat(SpecialStat):
-    def __init__(self, _):
-        self.value = 1
-        
-    def multiplier(self):
-        return 2.0
-STATS_FROM_NAMES['heal'] = HealStat
-
 class Code:
     def __init__(self, sources, targets, events):
         self.sources = tuple(sources)
@@ -95,7 +42,7 @@ class Code:
     def fits(self, event):
         if not self.list_fits(self.sources, event.sources):
             return False
-        if not self.list_fits(self.targets, event.targets):
+        if not self.list_fits(self.targets, [event.target]):
             return False
         if not self.list_fits(self.events, [type(event)]):
             return False
@@ -104,22 +51,122 @@ class Code:
         return True
     
     #This must be overriden to do anything
+    def new_turn(self, game_manager):
+        pass
+    
+    #This must be overriden to do anything
     def trigger(self, game_manager, event):
         pass
 
 class ReplacementCode(Code):
     pass
 
+class SpecialStat:
+    def get_codes(self):
+        return list()
+
+STATS_FROM_NAMES = dict()
+
+class AbsorbStat(SpecialStat):
+    def __init__(self, value, bot):
+        self.value = value
+        self.bot = bot
+        self.code = AbsorbReplacementCode(self.value, self.bot)
+    
+    def get_codes(self):
+        return [self.code]
+    
+    def multiplier(self):
+        return 1.0 + self.value / 10.0
+
+class AbsorbReplacementCode(ReplacementCode):
+    def __init__(self, value, bot):
+        super().__init__([], [bot], [effects.DamageEffect])
+        self.value = value
+        self.bot = bot
+        
+        self.reduction_this_turn = 0
+    
+    def new_turn(self, game_manager):
+        self.reduction_this_turn = 0
+    
+    def fits(self, effect):
+        if not super().fits(effect):
+            return False
+        # print('maybe fits')
+        return self.reduction_this_turn < self.value
+    
+    def trigger(self, game_manager, effect):
+        reduction_left = self.value - self.reduction_this_turn
+        damage = effect.damage
+        damage_reduction = min(reduction_left, damage)
+        self.reduction_this_turn += damage_reduction
+        # print('damage_reduction: {}'.format(damage_reduction))
+        
+        reduced_damage = effect.damage - damage_reduction
+        new_effect = effects.DamageEffect(effect.sources + tuple([self]),
+                                          effect.target,
+                                          reduced_damage)
+        game_manager.register_effect(new_effect)
+STATS_FROM_NAMES['absorb'] = AbsorbStat
+
+class TallStat(SpecialStat):
+    def __init__(self, value, bot):
+        #This is a binary stat
+        #Either you have it or you don't
+        self.value = 1
+    
+    def multiplier(self):
+        return 1.5
+STATS_FROM_NAMES['tall'] = TallStat
+
+class BurnStat(SpecialStat):
+    def __init__(self, value, bot):
+        self.value = value
+        
+        if self.value < 1:
+            raise ValueError('value: {}'.format(value))
+        if round(self.value) != self.value:
+            raise ValueError('value: {}'.format(value))
+    
+    def multiplier(self):
+        return 1 + self.value * 0.5
+STATS_FROM_NAMES['burn'] = BurnStat
+
+class NoGiveEnergyStat(SpecialStat):
+    def __init__(self, value, bot):
+        self.value = 1
+    
+    def multiplier(self):
+        return 0.9
+STATS_FROM_NAMES['no_give_energy'] = NoGiveEnergyStat
+
+class NoBuildStat(SpecialStat):
+    def __init__(self, value, bot):
+        self.value = 1
+    
+    def multiplier(self):
+        return 0.9
+STATS_FROM_NAMES['no_build'] = NoBuildStat
+
+class HealStat(SpecialStat):
+    def __init__(self, value, bot):
+        self.value = 1
+        
+    def multiplier(self):
+        return 2.0
+STATS_FROM_NAMES['heal'] = HealStat
+
 #Implemented special stats:
+#Absorb X
 #Heal
 #NoGiveEnergy
 #NoBuild
 #Tall
 
 #Unimplemented special stats:
-#Absorb X
 #Burn X
-#Spread X *
+#Spread X
 #Stealth
 #Curved Sight
 

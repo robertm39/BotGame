@@ -44,7 +44,7 @@ class AttackEffect(Effect):
         bot = bots_at[0]
         damage = get_random_damage(self.power)
         
-        damage_effect = DamageEffect(self.sources + [self], bot, damage)
+        damage_effect = DamageEffect(self.sources + tuple([self]), bot, damage)
         game_manager.register_effect(damage_effect)
 
 class GiveEnergyEffect(Effect):
