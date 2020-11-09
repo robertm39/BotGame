@@ -211,8 +211,8 @@ def heal_test_1(battlefield):
                             movement=1,
                             player='1',
                             message='RIGHT',
-                            special_stats=dict(),
-                            controller=heal_controller)
+                            controller=heal_controller,
+                            heal=1)
     
     battlefield.add_item(heal_bot)
 
@@ -232,9 +232,10 @@ def give_life_test_1(battlefield):
                             movement=1,
                             player='1',
                             message='RIGHT',
-                            special_stats=dict(),
-                            controller=heal_controller)
+                            controller=heal_controller,
+                            heal=1)
     battlefield.add_item(heal_bot)
+    print('heal_bot.heal: {}'.format(heal_bot.heal))
     
     sit_controller = controllers.SitController()
     hurt_bot = bot_game.Bot(coords=(1, 0),
@@ -258,7 +259,9 @@ def main():
     
     battlefield = bot_game.Battlefield(10, 10)
     
-    give_life_test_1(battlefield)
+    # test_1(battlefield)
+    # give_life_test_1(battlefield)
+    heal_test_1(battlefield)
     
     game_manager = bot_game.GameManager(battlefield)
     

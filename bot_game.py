@@ -8,6 +8,7 @@ Created on Wed Oct 14 12:46:26 2020
 from enum import Enum
 
 import effects as eff
+import builds
 
 #This function will used for line-of-sight
 def directions(coords):
@@ -375,12 +376,6 @@ class CodeDict:
         self.remove_for_field(code, code.targets, self.codes_from_targets)
         self.remove_for_field(code, code.events, self.codes_from_events)
     
-    # def get_matches_for_field(self, from_field, field):
-    #     result = list(from_field[None])
-        
-        
-    #     return result.copy()
-    
     def __getitem__(self, spec):
         sources, target, event = spec
         
@@ -388,20 +383,14 @@ class CodeDict:
         for source in sources:
             from_source.extend(self.codes_from_sources.get(source, []))
         from_source = set(from_source)
-        # print('from_source: {}'.format(from_source))
         
         from_target = self.codes_from_targets[None] + \
                       self.codes_from_targets.get(target, [])
         from_target = set(from_target)
-        # print('from_target: {}'.format(from_target))
         
         from_event = self.codes_from_events[None] + \
                      self.codes_from_events.get(event, [])
         from_event = set(from_event)
-        # print('from_event: {}'.format(from_event))
-        # print('')
-        # s2 = set(self.get_matches_for_field(self.codes_from_targets, spec[1]))
-        # s3 = set(self.get_matches_for_field(self.codes_from_events, spec[2]))
         
         return list(from_source.intersection(from_target, from_event))
 
@@ -462,12 +451,11 @@ class GameManager:
         
         return result
     
+    def register_triggered_code(self, code):
+        self.triggered_codes.register_code(code)
+    
     def register_replacement_code(self, code):
-        spec = (code.sources, code.target, code.events)
-        if not spec in self.replacement_codes:
-            self.replacement_codes[spec] = [code]
-            return
-        self.replacement_codes[spec].append(code)
+        self.replacement_codes.register_code(code)
     
     def register_effect(self, effect):
         """
@@ -478,16 +466,75 @@ class GameManager:
         """
         self.effects.append(effect)
     
+    def check_replacement_codes(self, effect):
+        """
+        Trigger the first replacement code that fits, or none if none fit.
+        
+        Parameters:
+            effect Effect: The effect to trigger replacement codes for.
+        
+        Return:
+            bool: Whether any replacement codes were triggered.
+        """
+        spec = (tuple(effect.sources), effect.target, type(effect))
+        replacements = self.replacement_codes[spec]
+        for replacement in replacements:
+            if replacement.fits(effect):
+                #An effect can only be replaced once
+                #by each replacement code
+                if not replacement in effect.sources:
+                    replacement.trigger(self, effect)
+                    return True
+        return False
+    
+    def check_triggered_codes(self, effect):
+        """
+        Trigger all triggered code that fit.
+        
+        Parameters:
+            effect Effect: The effect to trigger triggered codes for.
+        
+        """
+        spec = (tuple(effect.sources), effect.target, type(effect))
+        triggereds = self.triggered_codes[spec]
+        for triggered in triggereds:
+            if triggered.fits(effect):
+                triggered.trigger(self, effect)
+    
     def resolve_effects(self):
         """
         Resolve all the effetcs in self.effects, first checking for replacement
         code and then for triggered code.
         """
-        #Implement replacement code and triggered code later
-        for effect in self.effects:
+        #I can't do a normal for loop because effects might be added
+        while self.effects:
+            effect = self.effects[0]
+            del self.effects[0]
+            
+            # #See if any replacement codes apply
+            # replacements = self.replacement_codes[spec]
+            # replaced = False
+            # for replacement in replacements:
+            #     if replacement.fits(effect):
+            #         #An effect can only be replaced once
+            #         #by each replacement code
+            #         if not replacement in effect.sources:
+            #             replaced = True
+            #             replacement.trigger(self, effect)
+            
+            #Check for replacement codes, and if any trigger
+            #don't resolve the effect
+            if self.check_replacement_codes(effect):
+                continue
+            
             effect.resolve(self)
             
-        self.effects.clear()
+            self.check_triggered_codes(effect)
+            # #See if any triggered codes apply
+            # triggereds = self.triggered_codes[spec]
+            # for triggered in  triggereds:
+            #     if triggered.fits(effect):
+            #         triggered.trigger(self, effect)
     
     def upkeep(self):
         """
@@ -506,7 +553,7 @@ class GameManager:
             
             es = sources[0]
             bot = bots[0]
-            effect = eff.GiveEnergyEffect([es], [bot], es.amount)
+            effect = eff.GiveEnergyEffect([es], bot, es.amount)
             self.register_effect(effect)
         self.resolve_effects()
     
@@ -650,7 +697,7 @@ class GameManager:
             if bot.energy == 0:
                 continue
             if not hasattr(bot, 'heal'):
-                print('no heal bot:\n{}'.format(bot))
+                # print('no heal bot:\n{}'.format(bot))
                 continue
             
             move = moves[0]
@@ -704,7 +751,7 @@ class GameManager:
                 
                 attacked_coords.append(tc)
                 
-                attack_effect = eff.AttackEffect([bot], [tc], bot.power)
+                attack_effect = eff.AttackEffect([bot], tc, bot.power)
                 self.register_effect(attack_effect)
             
             self.resolve_effects()
@@ -971,9 +1018,12 @@ class Bot:
         
         # self.special_stats = special_stats.copy()
         self.special_stats_dict = special_stats_dict.copy()
+        self.special_stats = list()
         
         for stat, val in special_stats_dict.items():
+            # print('{}, {}'.format(stat, val))
             self.__setattr__(stat, val)
+            self.special_stats.append(builds.STATS_FROM_NAMES[stat](val))
     
     def increase_hp(self, amount):
         """

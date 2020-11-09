@@ -265,7 +265,7 @@ class GiveLifeController:
         self.owner_view = owner_view
     
     def get_moves(self):
-        print('energy: {}'.format(self.owner_view.energy))
+        # print('energy: {}'.format(self.owner_view.energy))
         
         if not self.direction:
             message = self.owner_view.message

@@ -37,7 +37,7 @@ STATS_FROM_NAMES = dict()
 #I'll actually implement this later
 #for now I'll just have this
 class TallStat(SpecialStat):
-    def __init__(self):
+    def __init__(self, _):
         #This is a binary stat
         #Either you have it or you don't
         self.value = 1
@@ -60,7 +60,7 @@ class BurnStat(SpecialStat):
 STATS_FROM_NAMES['burn'] = BurnStat
 
 class NoGiveEnergyStat(SpecialStat):
-    def __init__(self):
+    def __init__(self, _):
         self.value = 1
     
     def multiplier(self):
@@ -68,7 +68,7 @@ class NoGiveEnergyStat(SpecialStat):
 STATS_FROM_NAMES['no_give_energy'] = NoGiveEnergyStat
 
 class NoBuildStat(SpecialStat):
-    def __init__(self):
+    def __init__(self, _):
         self.value = 1
     
     def multiplier(self):
@@ -76,7 +76,7 @@ class NoBuildStat(SpecialStat):
 STATS_FROM_NAMES['no_build'] = NoBuildStat
 
 class HealStat(SpecialStat):
-    def __init__(self):
+    def __init__(self, _):
         self.value = 1
         
     def multiplier(self):
@@ -102,6 +102,10 @@ class Code:
         
         #This must be overriden for more specific matches
         return True
+    
+    #This must be overriden to do anything
+    def trigger(self, game_manager, event):
+        pass
 
 class ReplacementCode(Code):
     pass
