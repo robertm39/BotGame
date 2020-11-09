@@ -67,6 +67,14 @@ class NoGiveEnergyStat(SpecialStat):
         return 0.9
 STATS_FROM_NAMES['no_give_energy'] = NoGiveEnergyStat
 
+class NoBuildStat(SpecialStat):
+    def __init__(self):
+        self.value = 1
+    
+    def multiplier(self):
+        return 0.9
+STATS_FROM_NAMES['no_build'] = NoBuildStat
+
 class HealStat(SpecialStat):
     def __init__(self):
         self.value = 1
@@ -74,6 +82,42 @@ class HealStat(SpecialStat):
     def multiplier(self):
         return 2.0
 STATS_FROM_NAMES['heal'] = HealStat
+
+class Code:
+    def __init__(self, sources, targets, events):
+        self.sources = tuple(sources)
+        self.targets = tuple(targets)
+        self.events = tuple(events)
+    
+    def list_fits(self, l1, l2):
+        return (not l1) or (set(l1).intersection(l2))
+    
+    def fits(self, event):
+        if not self.list_fits(self.sources, event.sources):
+            return False
+        if not self.list_fits(self.targets, event.targets):
+            return False
+        if not self.list_fits(self.events, [type(event)]):
+            return False
+        
+        #This must be overriden for more specific matches
+        return True
+
+class ReplacementCode(Code):
+    pass
+
+#Implemented special stats:
+#Heal
+#NoGiveEnergy
+#NoBuild
+#Tall
+
+#Unimplemented special stats:
+#Absorb X
+#Burn X
+#Spread X *
+#Stealth
+#Curved Sight
 
 class BuildMove(bg.Move):
     def __init__(self,

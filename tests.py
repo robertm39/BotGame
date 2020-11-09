@@ -75,7 +75,7 @@ def get_visible_coords_test_one_case(coords, sight, result, blocked=None):
     
     visible_coords = battlefield.get_visible_coords(seeing_bot)
     if set(visible_coords) == set(result):
-        print('Test passed: coords={}, sight={}'.format(coords, sight))
+        # print('Test passed: coords={}, sight={}'.format(coords, sight))
         return True
     else:
         print('')
@@ -114,6 +114,7 @@ def get_gvc_case(x, y, sight, layout):
             if char == 'O':
                 result.append(true_coords)
             elif char == 'X':
+                result.append(true_coords)
                 blocked.append(true_coords)
     
     return coords, sight, result, blocked

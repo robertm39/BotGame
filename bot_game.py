@@ -255,27 +255,14 @@ class Battlefield:
         #with a Tall bot
         #any line that goes between two points in the minimal distance is
         #straight, even if it turns
-        #This is because the geometry of the battlefield is not euclidian
-        #||x, y|| = |x| + |y| instead of sqrt(x^2 + y^2)
-        #This makes it so there are several straight lines between any two
-        #points
-        #and also there are infinitely many lines parallel to any line
-        # print('bot.coords: {}'.format(bot.coords))
         
         result = [bot.coords]
         outer_coords = [bot.coords]
         for _ in range(bot.sight):
             new_coords = set()
             for coords in outer_coords:
-                # print('')
-                # print('bot.coords: {}'.format(bot.coords))
                 d_coords = diff(bot.coords, coords)
-                # if coords == (11, 10):
-                    # print('bot.coords: {}'.format(bot.coords))
-                    # print(bot.coords)
-                    # print(d_coords)
-                    # print(directions(d_coords))
-                # print(d_coords)
+                
                 for d in directions(d_coords):
                     # print(d)
                     t_coords = coords_in_direction(coords, d)
@@ -287,8 +274,10 @@ class Battlefield:
                         continue
                     
                     bot_at = bots_at[0]
-                    #If the bot is tall, the square can't be seen into
+                    #If the bot is tall, the square can't be seen past
+                    #But it can be seen into
                     if hasattr(bot_at, 'tall'):
+                        result.append(t_coords)
                         continue
                     new_coords.add(t_coords)
             
@@ -296,7 +285,20 @@ class Battlefield:
             outer_coords = list(new_coords)
         
         return result
-        # return coords_within_distance(bot.coords, bot.sight)
+    
+    def is_visible_for(self, bot, t_coords):
+        """
+        Return whether the given coords are visible for the given bot.
+        
+        Arguments:
+            bot Bot: The bot to check visibility for.
+            t_coords (int, int): The coords to check visibility of.
+        
+        Return:
+            bool: Whether the given coords are visible for the given bot.
+        """
+        #This can be optimized, but it doesn't need to be
+        return t_coords in self.get_visible_coords(bot)
     
     def set_coords(self, item, coords):
         """
@@ -339,15 +341,71 @@ class Battlefield:
             if bot.energy < 0:
                 raise ValueError('bot with negative energy:\n{}'.format(bot))
 
+class CodeDict:
+    def __init__(self):
+        self.codes_from_sources = {None:[]}
+        self.codes_from_targets = {None:[]}
+        self.codes_from_events = {None:[]}
+    
+    def register_for_field(self, code, from_field, field):
+        if not field:
+            self.from_field[None].append(code)
+        else:
+            for f in field:
+                if not f in from_field:
+                    from_field[f] = [code]
+                else:
+                    from_field[f].append(code)
+    
+    def register_code(self, code):
+        self.register_for_field(code, code.sources, self.codes_from_sources)
+        self.register_for_field(code, code.targets, self.codes_from_targets)
+        self.register_for_field(code, code.events, self.codes_from_events)
+    
+    def remove_for_field(self, code, from_field, field):
+        if not field:
+            self.from_field[None].remove(code)
+        else:
+            for f in field:
+                from_field[f].remove(code)
+    
+    def remove_code(self, code):
+        self.remove_for_field(code, code.sources, self.codes_from_sources)
+        self.remove_for_field(code, code.targets, self.codes_from_targets)
+        self.remove_for_field(code, code.events, self.codes_from_events)
+    
+    # def get_matches_for_field(self, from_field, field):
+    #     result = list(from_field[None])
+        
+        
+    #     return result.copy()
+    
+    def get_matches(self, spec):
+        sources, target, event = spec
+        
+        from_source = self.codes_from_sources[None].copy()
+        for source in sources:
+            from_source.extend(self.codes_from_sources[source])
+        
+        from_target = self.codes_from_targets[None] + \
+                      self.codes_from_targets[target]
+        
+        from_event = self.codes_from_events[None] + \
+                     self.codes_from_events[event]
+        # s2 = set(self.get_matches_for_field(self.codes_from_targets, spec[1]))
+        # s3 = set(self.get_matches_for_field(self.codes_from_events, spec[2]))
+        
+        return set(from_source).intersection(set(from_target), set(from_event))
+
 class GameManager:
     def __init__(self, battlefield):
         self.battlefield = battlefield
         
         self.waiting_codes = list()
-        self.triggered_codes = list()
-        self.replacement_codes = list()
+        self.triggered_codes = CodeDict()
+        self.replacement_codes = CodeDict()
         self.effects = list()
-    
+        
         self.process_funcs = {MoveType.GIVE_ENERGY: self.process_give_energys,
                               MoveType.GIVE_LIFE: self.process_give_lifes,
                               MoveType.HEAL: self.process_heals,
@@ -396,6 +454,13 @@ class GameManager:
         
         return result
     
+    def register_replacement_code(self, code):
+        spec = (code.sources, code.target, code.events)
+        if not spec in self.replacement_codes:
+            self.replacement_codes[spec] = [code]
+            return
+        self.replacement_codes[spec].append(code)
+    
     def register_effect(self, effect):
         """
         Register the given effect into self.effects.
@@ -433,7 +498,7 @@ class GameManager:
             
             es = sources[0]
             bot = bots[0]
-            effect = eff.GiveEnergyEffect([es], es.amount, bot)
+            effect = eff.GiveEnergyEffect([es], [bot], es.amount)
             self.register_effect(effect)
         self.resolve_effects()
     
@@ -625,9 +690,13 @@ class GameManager:
                 move = moves[0]
                 
                 tc = move.target_coords
+                if not self.battlefield.is_visible_for(bot, tc):
+                    #Only do the attack if the target is in line-of-sight
+                    continue
+                
                 attacked_coords.append(tc)
                 
-                attack_effect = eff.AttackEffect([bot], bot.power, tc)
+                attack_effect = eff.AttackEffect([bot], [tc], bot.power)
                 self.register_effect(attack_effect)
             
             self.resolve_effects()
@@ -795,6 +864,10 @@ class GameManager:
         for bot, moves in moves_from_bots.items():
             if not moves:
                 continue
+            
+            if hasattr(bot, 'no_build'):
+                continue
+            
             move = moves[0]
             t_coords = coords_in_direction(bot.coords, move.direction)
             
