@@ -632,6 +632,7 @@ class GameManager:
         """
         self.supply_energy()
         self.newturn_codes()
+        self.resolve_effects()
     
     def process_give_energys(self, moves_from_bots):
         """
@@ -824,17 +825,6 @@ class GameManager:
                 self.register_effect(attack_effect)
             
             self.resolve_effects()
-            
-            # #Remove all dead bots
-            # for coords in attacked_coords:
-            #     items = self.battlefield.at(coords)
-            #     bots = [i for i in items if isinstance(i, Bot)]
-            #     if not bots:
-            #         continue
-                
-            #     bot = bots[0]
-            #     if bot.is_dead():
-            #         self.battlefield.remove_bot(bot)
     
     def process_moves(self, moves_from_bots):
         """
@@ -1056,6 +1046,7 @@ class GameManager:
                 continue
             
             self.process_funcs[move_type](moves_from_bots)
+            self.resolve_effects()
 
 import builds
 class Bot:

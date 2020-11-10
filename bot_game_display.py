@@ -369,6 +369,38 @@ def spread_test_1(battlefield):
                            controller=controller)
         battlefield.add_bot(bot)
 
+def burn_test_1(battlefield):
+    fight_controller_1 = controllers.SeekAndFightController()
+    burn_bot = bot_game.Bot(coords=(1, 1),
+                            max_hp=100,
+                            hp=100,
+                            power=1,
+                            attack_range=1,
+                            speed=0,
+                            sight=5,
+                            energy=0,
+                            movement=1,
+                            player='1',
+                            message='RIGHT',
+                            controller=fight_controller_1,
+                            burn=9)
+    battlefield.add_bot(burn_bot)
+    
+    sit_controller = controllers.SitController()
+    sit_bot = bot_game.Bot(coords=(2, 1),
+                            max_hp=100,
+                            hp=100,
+                            power=1,
+                            attack_range=1,
+                            speed=0,
+                            sight=5,
+                            energy=0,
+                            movement=1,
+                            player='2',
+                            message='RIGHT',
+                            controller=sit_controller,)
+    battlefield.add_bot(sit_bot)
+
 def main():
     root = tk.Tk()
     root.geometry('600x600+400+100')
@@ -383,7 +415,8 @@ def main():
     # heal_test_1(battlefield)
     # absorb_test_1(battlefield)
     # absorb_test_2(battlefield)
-    spread_test_1(battlefield)
+    # spread_test_1(battlefield)
+    burn_test_1(battlefield)
     
     frame = BotGameDisplayFrame(root,
                                 game_manager,

@@ -93,7 +93,6 @@ class AbsorbReplacementCode(ReplacementCode):
     def fits(self, effect):
         if not super().fits(effect):
             return False
-        # print('maybe fits')
         return self.reduction_this_turn < self.value
     
     def trigger(self, game_manager, effect):
@@ -101,7 +100,6 @@ class AbsorbReplacementCode(ReplacementCode):
         damage = effect.damage
         damage_reduction = min(reduction_left, damage)
         self.reduction_this_turn += damage_reduction
-        # print('damage_reduction: {}'.format(damage_reduction))
         
         reduced_damage = effect.damage - damage_reduction
         new_effect = effects.DamageEffect(effect.sources + tuple([self]),
@@ -123,14 +121,62 @@ STATS_FROM_NAMES['tall'] = TallStat
 class BurnStat(SpecialStat):
     def __init__(self, value, bot):
         self.value = value
+        self.bot = bot
+        
+        self.code = BurnReplacementCode(self.value, self.bot)
         
         if self.value < 1:
             raise ValueError('value: {}'.format(value))
         if round(self.value) != self.value:
             raise ValueError('value: {}'.format(value))
     
+    def get_codes(self):
+        return [self.code]
+    
     def multiplier(self):
         return 1 + self.value * 0.5
+
+class Burn:
+    def __init__(self, sources, target, power):
+        self.sources = tuple(sources)
+        self.target = target
+        self.power = power
+
+class BurnReplacementCode(ReplacementCode):
+    def __init__(self, value, bot):
+        super().__init__([bot], [], [effects.AttackEffect])
+        self.value = value
+        self.bot = bot
+        
+        self.burns = dict()
+    
+    #Default fits() behavior works
+    
+    #Do all the burn damage in the new_turn step
+    #This makes the burn effect better because the first burn happens
+    #before the other bot has the chance to realized it's being burned and
+    #run away
+    #Unless that bot knew all along it was facing a bot with burn
+    def new_turn(self, game_manager):
+        for burn in self.burns:
+            attack_effect = effects.AttackEffect(burn.sources,
+                                                 burn.target,
+                                                 burn.power)
+            game_manager.register_effect(attack_effect)
+        
+        #Decrement the amount of time left on all burns
+        #and get rid of the ones that would be left at zero
+        self.burns = {b:i-1 for b, i in self.burns.items() if i > 1}
+    
+    def trigger(self, game_manager, effect):
+        t_coords = effect.target
+        burn = Burn(effect.sources + tuple([self]), t_coords, effect.power)
+        self.burns[burn] = self.value
+        
+        new_attack = effects.AttackEffect(effect.sources + tuple([self]),
+                                          t_coords,
+                                          effect.power)
+        game_manager.register_effect(new_attack)
 STATS_FROM_NAMES['burn'] = BurnStat
 
 class SpreadStat(SpecialStat):
@@ -165,7 +211,7 @@ class SpreadReplacementCode(ReplacementCode):
         self.value = value
         self.bot = bot
     
-    #Can use the default fits() behavior
+    #Default fits() behavior works
     
     def trigger(self, game_manager, effect):
         c_coords = effect.target
@@ -206,14 +252,14 @@ STATS_FROM_NAMES['heal'] = HealStat
 
 #Implemented special stats:
 #Absorb X
+#Spread X
 #Heal
 #NoGiveEnergy
 #NoBuild
 #Tall
 
 #Unimplemented special stats:
-#Burn X
-#Spread X *
+#Burn X *
 #Stealth
 #Curved Sight
 
