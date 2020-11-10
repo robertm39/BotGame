@@ -24,7 +24,7 @@ class DamageEffect(Effect):
     def resolve(self, game_manager):
         self.target.take_damage(self.damage)
         if self.target.is_dead():
-            game_manager.battlefield.remove_bot(self.target)
+            game_manager.battlefield.remove_bot(self.target, should_have=False)
         
 def get_random_damage(power):
     #The sum of x {0, 1} dice, where x = power

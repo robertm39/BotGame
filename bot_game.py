@@ -11,7 +11,7 @@ import effects as eff
 
 #This function will used for line-of-sight
 #I don't know what else for
-def directions(coords):
+def directions_for_coords(coords):
     x, y = coords
     
     result = list()
@@ -238,9 +238,10 @@ class Battlefield:
             
         self.bots_from_speeds[speed].append(bot)
     
-    def remove_bot(self, bot):
+    def remove_bot(self, bot, should_have=True):
         if not bot in self.bots:
-            print('bot not in self.bots: {}'.format(bot))
+            if should_have:
+                print('bot not in self.bots: {}'.format(bot))
             return
         
         self.game_manager.handle_remove_bot(bot)
@@ -249,7 +250,11 @@ class Battlefield:
         self.map[bot.coords].remove(bot)
         self.bots_from_speeds[bot.speed].remove(bot)
     
-    def get_visible_coords(self, bot=None, c_coords=None, s_range=None):
+    def get_visible_coords(self,
+                           bot=None,
+                           c_coords=None,
+                           s_range=None,
+                           curved_s=False):
         """
         Return the coords visible to the given bot.
         
@@ -262,8 +267,11 @@ class Battlefield:
         #any line that goes between two points in the minimal distance is
         #straight, even if it turns
         
-        center_coords = bot.coords if bot else c_coords
-        sight = bot.sight if bot else s_range
+        center_coords = c_coords if c_coords else bot.coords
+        # sight = bot.sight if bot else s_range
+        sight = s_range if s_range else bot.sight
+        # curved = hasattr(bot, 'curved_sight') if bot else 
+        curved = curved_s or hasattr(bot, 'curved_sight')
         
         result = [center_coords]
         outer_coords = [center_coords]
@@ -272,9 +280,14 @@ class Battlefield:
             for coords in outer_coords:
                 d_coords = diff(center_coords, coords)
                 
-                for d in directions(d_coords):
+                directions = list(Direction) if curved else\
+                             directions_for_coords(d_coords)
+                for d in directions:
                     # print(d)
                     t_coords = coords_in_direction(coords, d)
+                    if t_coords in result:
+                        continue
+                    
                     if not self.is_in_bounds(t_coords):
                         continue
                     bots_at = self.bots_at(t_coords)

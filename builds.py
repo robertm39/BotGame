@@ -216,7 +216,10 @@ class SpreadReplacementCode(ReplacementCode):
     def trigger(self, game_manager, effect):
         c_coords = effect.target
         battlefield = game_manager.battlefield
-        t_coords = battlefield.get_visible_coords(c_coords=c_coords,
+        
+        #Spreading uses curved line of sight if the bot does
+        t_coords = battlefield.get_visible_coords(self.bot,
+                                                  c_coords=c_coords,
                                                   s_range=self.value)
         
         for t_coord in t_coords:
@@ -253,15 +256,15 @@ STATS_FROM_NAMES['heal'] = HealStat
 #Implemented special stats:
 #Absorb X
 #Spread X
+#Burn X
 #Heal
 #NoGiveEnergy
 #NoBuild
 #Tall
+#Curved Sight
 
 #Unimplemented special stats:
-#Burn X *
 #Stealth
-#Curved Sight
 
 class BuildMove(bg.Move):
     def __init__(self,
