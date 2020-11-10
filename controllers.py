@@ -111,35 +111,6 @@ class SeekAndFightController:
         
         moves = dict()
         
-        #Move toward the closest enemy
-        # x_diff = closest_enemy.coords[0] - coords[0]
-        # y_diff = closest_enemy.coords[1] - coords[1]
-        
-        # x_dir = None
-        # y_dir = None
-        
-        # if x_diff > 0:
-        #     x_dir = bg.Direction.RIGHT
-        # elif x_diff < 0:
-        #     x_dir = bg.Direction.LEFT
-        # if y_diff < 0:
-        #     y_dir = bg.Direction.UP
-        # elif y_diff > 0:
-        #     y_dir = bg.Direction.DOWN
-        
-        # if x_dir and y_dir:
-        #     if randint(0, 1) == 0:
-        #         move = bg.Move(bg.MoveType.MOVE, direction=x_dir)
-        #         moves[bg.MoveType.MOVE] = [move]
-        #     else:
-        #         move = bg.Move(bg.MoveType.MOVE, direction=y_dir)
-        #         moves[bg.MoveType.MOVE] = [move]
-        # elif x_dir:
-        #     move = bg.Move(bg.MoveType.MOVE, direction=x_dir)
-        #     moves[bg.MoveType.MOVE] = [move]
-        # elif y_dir:
-        #     move = bg.Move(bg.MoveType.MOVE, direction=y_dir)
-        #     moves[bg.MoveType.MOVE] = [move]
         approach_moves = get_approach_moves(coords, closest_enemy.coords)
         moves[bg.MoveType.MOVE] = approach_moves
         
@@ -266,14 +237,12 @@ class GiveLifeController:
         self.owner_view = owner_view
     
     def get_moves(self):
-        # print('energy: {}'.format(self.owner_view.energy))
-        
         if not self.direction:
             message = self.owner_view.message
             self.direction = bg.Direction.__dict__.get(message, None)
         
         if not self.direction:
-            return
+            return dict()
         
         coords = self.owner_view.coords
         target_coords = bg.coords_in_direction(coords, self.direction)
@@ -296,3 +265,37 @@ class GiveLifeController:
             # print('building')
         
         return moves
+
+class SpreadAttackController:
+    def __init__(self):
+        self.view = None
+        self.owner_view = None
+        self.direction = None
+    
+    def give_view(self, view, owner_view):
+        self.view = view
+        self.owner_view = owner_view
+    
+    def get_moves(self):
+        if not self.direction:
+            message = self.owner_view.message
+            self.direction = bg.Direction.__dict__.get(message, None)
+        
+        if not self.direction:
+            return dict()
+        
+        coords = self.owner_view.coords
+        
+        #Target a square that makes it so that the spread doesn't hit
+        #this robot
+        t_coords = coords
+        attack_range = self.owner_view.attack_range
+        spread = self.owner_view.spread
+        for _ in range(min(attack_range, spread + 1)):
+            t_coords = bg.coords_in_direction(t_coords, self.direction)
+        
+        attack = bg.Move(bg.MoveType.ATTACK, target_coords=t_coords)
+        moves = dict()
+        moves[bg.MoveType.ATTACK] = [attack]
+        return moves
+        

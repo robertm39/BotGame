@@ -122,6 +122,7 @@ class MoveType(Enum):
     ATTACK = 'ATTACK'
     MOVE = 'MOVE'
     BUILD = 'BUILD'
+    SET_MESSAGE = 'SET_MESSAGE'
 
 class Direction(Enum):
     LEFT = 'LEFT'
@@ -248,7 +249,7 @@ class Battlefield:
         self.map[bot.coords].remove(bot)
         self.bots_from_speeds[bot.speed].remove(bot)
     
-    def get_visible_coords(self, bot):
+    def get_visible_coords(self, bot=None, c_coords=None, s_range=None):
         """
         Return the coords visible to the given bot.
         
@@ -261,12 +262,15 @@ class Battlefield:
         #any line that goes between two points in the minimal distance is
         #straight, even if it turns
         
-        result = [bot.coords]
-        outer_coords = [bot.coords]
-        for _ in range(bot.sight):
+        center_coords = bot.coords if bot else c_coords
+        sight = bot.sight if bot else s_range
+        
+        result = [center_coords]
+        outer_coords = [center_coords]
+        for _ in range(sight):
             new_coords = set()
             for coords in outer_coords:
-                d_coords = diff(bot.coords, coords)
+                d_coords = diff(center_coords, coords)
                 
                 for d in directions(d_coords):
                     # print(d)
@@ -444,7 +448,8 @@ class GameManager:
                               MoveType.HEAL: self.process_heals,
                               MoveType.ATTACK: self.process_attacks,
                               MoveType.MOVE: self.process_moves,
-                              MoveType.BUILD: self.process_builds}
+                              MoveType.BUILD: self.process_builds,
+                              MoveType.SET_MESSAGE: self.process_set_messages}
     
     def handle_add_bot(self, bot):
         """
@@ -881,6 +886,7 @@ class GameManager:
                 
                 #Check if this is in bounds
                 if not self.battlefield.is_in_bounds(new_coords):
+                    not_moving.append(bot)
                     continue
                 
                 #Check if this is a head-on move
@@ -888,24 +894,27 @@ class GameManager:
                 
                 unmoved_at = [b for b in bots_at if not b in already_moved]
                 if(unmoved_at):
+                    # print('len(unmoved_at): {}'.format(len(unmoved_at)))
                     #There's an unmoved bot in the destination coords
                     other_bot = unmoved_at[0]
                     
                     other_moves = moves_from_bots.get(other_bot, list())
                     if len(other_moves) > i:
                         #The bot is about to move
-                        move = other_moves[i]
-                        other_dir = move.direction
+                        other_move = other_moves[i]
+                        other_dir = other_move.direction
                         
                         other_dest = coords_in_direction(new_coords, other_dir)
                         
                         if other_dest == bot.coords:
                             #There's a head-on 
                             #So this movement fails
+                            not_moving.append(bot)
                             continue
                     else:
                         #The other bot isn't about to move, so you can't
                         #move into its square
+                        not_moving.append(bot)
                         continue
                 
                 self.battlefield.set_coords(bot, new_coords)
@@ -924,6 +933,7 @@ class GameManager:
                 num_bots_at = len(self.battlefield.bots_at(bot.coords))
                 
                 if(num_bots_at >= 2):
+                    # print('packed at {}'.format(bot.coords))
                     packed_coords.add(bot.coords)
             
             packed_coords = list(packed_coords)
@@ -931,20 +941,27 @@ class GameManager:
                 packed_coord = packed_coords[0]
                 del packed_coords[0]
                 
+                # print('processing packed coord {}'.format(packed_coord))
+                
                 bots_at = self.battlefield.bots_at(packed_coord)
+                # print('{} bots at this coord'.format(len(bots_at)))
                 
                 moved_bots = [b for b in bots_at if b in moved_this_time]
-                
-                max_speed = max([b.speed for b in moved_bots])
-                fastest_bots = [b for b in moved_bots if b.speed == max_speed]
+                # print('{} moved bots at this coord'.format(len(moved_bots)))
                 
                 move_back = moved_bots.copy()
-                if len(fastest_bots) == 1:
-                    fastest_bot = fastest_bots[0]
+                #All the bots in this square moved
+                if len(bots_at) == len(moved_bots):
+                    max_speed = max([b.speed for b in moved_bots])
+                    fastest_bots = [b for b in moved_bots if b.speed == max_speed]
                     
-                    #One bot is faster than all the others
-                    #So only move the slower bots back to their original spaces
-                    move_back = [b for b in moved_bots if b != fastest_bot]
+                    #If one bot is faster than all the others (no ties)
+                    if len(fastest_bots) == 1:
+                        fastest_bot = fastest_bots[0]
+                        
+                        #One bot is faster than all the others
+                        #So only move the slower bots back to their original spaces
+                        move_back = [b for b in moved_bots if b != fastest_bot]
                 
                 for bot in move_back:
                     coords = bot.coords
@@ -1020,7 +1037,14 @@ class GameManager:
                 print('Exception when processing BUILD move:')
                 print(err)
                 continue
-                
+    
+    def process_set_messages(self, moves_from_bots):
+        for bot, moves in moves_from_bots:
+            if not moves:
+                continue
+            
+            move = moves[0]
+            bot.message = move.message
     
     def advance(self):
         """

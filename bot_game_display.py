@@ -287,12 +287,93 @@ def absorb_test_1(battlefield):
     battlefield.add_bot(absorb_bot)
     battlefield.add_bot(plain_bot)
 
+def absorb_test_2(battlefield):
+    fight_controller_1 = controllers.SeekAndFightController()
+    absorb_bot = bot_game.Bot(coords=(1, 1),
+                              max_hp=100,
+                              hp=100,
+                              power=10,
+                              attack_range=1,
+                              speed=0,
+                              sight=5,
+                              energy=0,
+                              movement=1,
+                              player='1',
+                              message='RIGHT',
+                              controller=fight_controller_1,
+                              absorb=10)
+    
+    fight_controller_2 = controllers.SeekAndFightController()
+    plain_bot_1 = bot_game.Bot(coords=(1, 0),
+                               max_hp=100,
+                               hp=100,
+                               power=10,
+                               attack_range=1,
+                               speed=0,
+                               sight=5,
+                               energy=0,
+                               movement=1,
+                               player='2',
+                               message='DOWN',
+                               controller=fight_controller_2)
+    
+    fight_controller_3 = controllers.SeekAndFightController()
+    plain_bot_2 = bot_game.Bot(coords=(0, 1),
+                               max_hp=100,
+                               hp=100,
+                               power=10,
+                               attack_range=1,
+                               speed=0,
+                               sight=5,
+                               energy=0,
+                               movement=1,
+                               player='2',
+                               message='RIGHT',
+                               controller=fight_controller_3)
+    
+    battlefield.add_bot(absorb_bot)
+    battlefield.add_bot(plain_bot_1)
+    battlefield.add_bot(plain_bot_2)
+
+def spread_test_1(battlefield):
+    spread_controller = controllers.SpreadAttackController()
+    spread_bot = bot_game.Bot(coords=(1, 1),
+                              max_hp=100,
+                              hp=100,
+                              power=10,
+                              attack_range=2,
+                              speed=0,
+                              sight=5,
+                              energy=0,
+                              movement=1,
+                              player='1',
+                              message='RIGHT',
+                              controller=spread_controller,
+                              spread=1)
+    battlefield.add_bot(spread_bot)
+    
+    target_coords = [(3, 1), (2, 1), (4, 1), (3, 0), (3, 2)]
+    for coords in target_coords:
+        controller = controllers.SitController()
+        bot = bot_game.Bot(coords=coords,
+                           max_hp=100,
+                           hp=100,
+                           power=10,
+                           attack_range=0,
+                           speed=0,
+                           sight=5,
+                           energy=0,
+                           movement=1,
+                           player='2',
+                           message='RIGHT',
+                           controller=controller)
+        battlefield.add_bot(bot)
+
 def main():
     root = tk.Tk()
     root.geometry('600x600+400+100')
     
     battlefield = bot_game.Battlefield(10, 10)
-    
     
     game_manager = bot_game.GameManager(battlefield)
     
@@ -300,12 +381,14 @@ def main():
     # test_1(battlefield)
     # give_life_test_1(battlefield)
     # heal_test_1(battlefield)
-    absorb_test_1(battlefield)
+    # absorb_test_1(battlefield)
+    absorb_test_2(battlefield)
+    # spread_test_1(battlefield)
     
     frame = BotGameDisplayFrame(root,
                                 game_manager,
                                 square_size=50,
-                                frame_delay=250)
+                                frame_delay=1000)
     tk.app = frame
     
     frame.start_loop()

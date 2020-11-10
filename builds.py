@@ -5,8 +5,6 @@ Created on Fri Oct 30 16:39:48 2020
 @author: rober
 """
 
-import math
-
 import bot_game as bg
 import effects
 
@@ -25,7 +23,9 @@ def get_base_cost(max_hp, power, attack_range, speed, sight, movement):
     sight_mult = 0.2 if sight == 0 else 0.5 + sight/2.0
     movement_mult = 0.5 + movement/2.0
     
-    result = math.floor(base * range_mult * sight_mult * movement_mult)
+    #I'll use round instead
+    #to guard against floating point errors
+    result = round(base * range_mult * sight_mult * movement_mult)
     
     #Every unit must cost at least one energy
     return max(1, result)
@@ -133,6 +133,53 @@ class BurnStat(SpecialStat):
         return 1 + self.value * 0.5
 STATS_FROM_NAMES['burn'] = BurnStat
 
+class SpreadStat(SpecialStat):
+    def __init__(self, value, bot):
+        self.value = value
+        self.bot = bot
+        
+        if self.value < 1:
+            raise ValueError('value: {}'.format(value))
+        if round(self.value) != self.value:
+            raise ValueError('value: {}'.format(value))
+        
+        self.code = SpreadReplacementCode(self.value, self.bot)
+    
+    def get_codes(self):
+        return [self.code]
+    
+    def multiplier(self):
+        #The number of squares hit is equal to
+        #2n^2 + 2n + 1
+        #Where n is the spread range
+        #So the number of additional squares hit is 2n^2 + 2n
+        #And half of that is n^2 + n
+        #Remove the n because you need a high attack range to avoid
+        #hurting yourself
+        return 1 + self.value**2
+
+class SpreadReplacementCode(ReplacementCode):
+    def __init__(self, value, bot):
+        #Whenever this bot attacks anywhere
+        super().__init__([bot], [], [effects.AttackEffect])
+        self.value = value
+        self.bot = bot
+    
+    #Can use the default fits() behavior
+    
+    def trigger(self, game_manager, effect):
+        c_coords = effect.target
+        battlefield = game_manager.battlefield
+        t_coords = battlefield.get_visible_coords(c_coords=c_coords,
+                                                  s_range=self.value)
+        
+        for t_coord in t_coords:
+            attack = effects.AttackEffect(effect.sources + tuple([self]),
+                                          t_coord,
+                                          effect.power)
+            game_manager.register_effect(attack)
+STATS_FROM_NAMES['spread'] = SpreadStat
+
 class NoGiveEnergyStat(SpecialStat):
     def __init__(self, value, bot):
         self.value = 1
@@ -166,7 +213,7 @@ STATS_FROM_NAMES['heal'] = HealStat
 
 #Unimplemented special stats:
 #Burn X
-#Spread X
+#Spread X *
 #Stealth
 #Curved Sight
 
