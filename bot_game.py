@@ -275,6 +275,8 @@ class Battlefield:
                 for d in directions(d_coords):
                     # print(d)
                     t_coords = coords_in_direction(coords, d)
+                    if not self.is_in_bounds(t_coords):
+                        continue
                     bots_at = self.bots_at(t_coords)
                     
                     #If there aren't any bots there, it can be seen into
@@ -385,7 +387,7 @@ class CodeDict:
     
     def remove_for_field(self, code, field, from_field):
         if not field:
-            self.from_field[None].remove(code)
+            from_field[None].remove(code)
         else:
             for f in field:
                 from_field[f].remove(code)
@@ -823,16 +825,16 @@ class GameManager:
             
             self.resolve_effects()
             
-            #Remove all dead bots
-            for coords in attacked_coords:
-                items = self.battlefield.at(coords)
-                bots = [i for i in items if isinstance(i, Bot)]
-                if not bots:
-                    continue
+            # #Remove all dead bots
+            # for coords in attacked_coords:
+            #     items = self.battlefield.at(coords)
+            #     bots = [i for i in items if isinstance(i, Bot)]
+            #     if not bots:
+            #         continue
                 
-                bot = bots[0]
-                if bot.is_dead():
-                    self.battlefield.remove_bot(bot)
+            #     bot = bots[0]
+            #     if bot.is_dead():
+            #         self.battlefield.remove_bot(bot)
     
     def process_moves(self, moves_from_bots):
         """
@@ -871,7 +873,6 @@ class GameManager:
             for bot in moving_bots:
                 moves = moves_from_bots[bot]
                 
-                # if not len(moves) > i:
                 if len(moves) <= i:
                     not_moving.append(bot)
                     continue
@@ -894,7 +895,6 @@ class GameManager:
                 
                 unmoved_at = [b for b in bots_at if not b in already_moved]
                 if(unmoved_at):
-                    # print('len(unmoved_at): {}'.format(len(unmoved_at)))
                     #There's an unmoved bot in the destination coords
                     other_bot = unmoved_at[0]
                     
@@ -933,7 +933,6 @@ class GameManager:
                 num_bots_at = len(self.battlefield.bots_at(bot.coords))
                 
                 if(num_bots_at >= 2):
-                    # print('packed at {}'.format(bot.coords))
                     packed_coords.add(bot.coords)
             
             packed_coords = list(packed_coords)
@@ -941,13 +940,8 @@ class GameManager:
                 packed_coord = packed_coords[0]
                 del packed_coords[0]
                 
-                # print('processing packed coord {}'.format(packed_coord))
-                
                 bots_at = self.battlefield.bots_at(packed_coord)
-                # print('{} bots at this coord'.format(len(bots_at)))
-                
                 moved_bots = [b for b in bots_at if b in moved_this_time]
-                # print('{} moved bots at this coord'.format(len(moved_bots)))
                 
                 move_back = moved_bots.copy()
                 #All the bots in this square moved

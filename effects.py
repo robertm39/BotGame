@@ -23,6 +23,8 @@ class DamageEffect(Effect):
     
     def resolve(self, game_manager):
         self.target.take_damage(self.damage)
+        if self.target.is_dead():
+            game_manager.battlefield.remove_bot(self.target)
         
 def get_random_damage(power):
     #The sum of x {0, 1} dice, where x = power
@@ -36,7 +38,8 @@ class AttackEffect(Effect):
     def resolve(self, game_manager):
         battlefield = game_manager.battlefield
         
-        items_at = battlefield.map[self.target]
+        # items_at = battlefield.map[self.target]
+        items_at = battlefield.at(self.target)
         bots_at = [b for b in items_at if type(b) is bg.Bot]
         if not bots_at:
             return

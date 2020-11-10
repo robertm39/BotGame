@@ -349,7 +349,7 @@ def spread_test_1(battlefield):
                               player='1',
                               message='RIGHT',
                               controller=spread_controller,
-                              spread=1)
+                              spread=2)
     battlefield.add_bot(spread_bot)
     
     target_coords = [(3, 1), (2, 1), (4, 1), (3, 0), (3, 2)]
@@ -382,8 +382,8 @@ def main():
     # give_life_test_1(battlefield)
     # heal_test_1(battlefield)
     # absorb_test_1(battlefield)
-    absorb_test_2(battlefield)
-    # spread_test_1(battlefield)
+    # absorb_test_2(battlefield)
+    spread_test_1(battlefield)
     
     frame = BotGameDisplayFrame(root,
                                 game_manager,
