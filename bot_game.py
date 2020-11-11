@@ -509,7 +509,10 @@ class GameManager:
             for coords in visible_coords:
                 view[coords] = list()
                 for item in self.battlefield.at(coords):
-                    view[coords].append(item.view())
+                    item_view = item.view(bot)
+                    #If item_view == None, it's invisible
+                    if item_view:
+                        view[coords].append(item_view)
             
             bot.give_view(view)
     
@@ -632,7 +635,7 @@ class GameManager:
             self.register_effect(effect)
         self.resolve_effects()
     
-    def newturn_codes(self):
+    def newturns(self):
         """
         Call the new_turn function for all triggered and replacement codes.
         """
@@ -640,13 +643,16 @@ class GameManager:
             code.new_turn(self)
         for code in self.triggered_codes:
             code.new_turn(self)
+        
+        for bot in self.battlefield.bots:
+            bot.new_turn(self)
     
     def upkeep(self):
         """
         Perform upkeep tasks, like giving energy to bots on energy sources.
         """
         self.supply_energy()
-        self.newturn_codes()
+        self.newturns()
         self.resolve_effects()
     
     def process_give_energys(self, moves_from_bots):
@@ -1122,7 +1128,7 @@ class Bot:
             for name in dir(special_stat):
                 if name[0] == '_':
                     continue
-                print('name: {}'.format(name))
+                # print('name: {}'.format(name))
                 if not name in OVERRIDABLE:
                     continue
                 override = getattr(special_stat, name)
@@ -1159,6 +1165,10 @@ class Bot:
         increase = min(self.hp + amount, self.max_hp) - self.hp
         self.hp += increase
         return increase
+    
+    def new_turn(self, game_manager):
+        for stat in self.special_stats:
+            stat.new_turn(game_manager)
     
     #This pattern allows special stats to access the default methods
     #The core methods start with _, so they can't be overridden
@@ -1238,7 +1248,7 @@ class Bot:
     def is_dead(self):
         return self._is_dead()
     
-    def _view(self):
+    def _view(self, bot):
         """
         Return the view that will be given to controllers.
         
@@ -1260,8 +1270,8 @@ class Bot:
         
         return result
     
-    def view(self):
-        return self._view()
+    def view(self, bot):
+        return self._view(bot)
     
     def _give_view(self, view):
         """
@@ -1271,7 +1281,7 @@ class Bot:
         Parameters:
             view {(int, int): [item.view() return]}: The battlefield view.
         """
-        self.controller.give_view(view, self.view())
+        self.controller.give_view(view, self.view(self))
     
     def give_view(self, view):
         return self._give_view(view)

@@ -62,6 +62,9 @@ class ReplacementCode(Code):
     pass
 
 class SpecialStat:
+    def new_turn(self, game_manager):
+        pass
+    
     def get_codes(self):
         return list()
 
@@ -266,8 +269,26 @@ class CurvedSightStat(SpecialStat):
 STATS_FROM_NAMES['curved_sight'] = CurvedSightStat
 
 class StealthStat(SpecialStat):
-    def __init__(self, value, vot):
+    def __init__(self, value, bot):
         self.value = 1
+        self.bot = bot
+        
+        self.prev_coords = None
+        self.coords = None
+        self.moved = False
+    
+    def new_turn(self, game_manager):
+        self.prev_coords = self.coords
+        self.coords = self.bot.coords
+        
+        self.moved = self.prev_coords and self.prev_coords != self.coords
+    
+    def view(self, other_bot):
+        if self.moved or other_bot.player == self.bot.player:
+            return self.bot._view(other_bot)
+        
+        #Hasn't moved and the bot is another player's
+        return None
     
     def multipler(self):
         return 2.0
