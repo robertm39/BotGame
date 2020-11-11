@@ -130,6 +130,10 @@ class BurnStat(SpecialStat):
         if round(self.value) != self.value:
             raise ValueError('value: {}'.format(value))
     
+    # def decrease_hp(self, amount):
+    #     print('decreasing hp: {}\n{}'.format(self.bot, amount))
+    #     self.bot._decrease_hp(amount)
+    
     def get_codes(self):
         return [self.code]
     
@@ -252,6 +256,22 @@ class HealStat(SpecialStat):
     def multiplier(self):
         return 2.0
 STATS_FROM_NAMES['heal'] = HealStat
+
+class CurvedSightStat(SpecialStat):
+    def __init__(self, value, bot):
+        self.value = 1
+    
+    def multiplier(self):
+        return 2.0
+STATS_FROM_NAMES['curved_sight'] = CurvedSightStat
+
+class StealthStat(SpecialStat):
+    def __init__(self, value, vot):
+        self.value = 1
+    
+    def multipler(self):
+        return 2.0
+STATS_FROM_NAMES['stealth'] = StealthStat
 
 #Implemented special stats:
 #Absorb X

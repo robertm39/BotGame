@@ -64,9 +64,13 @@ def print_visible_coords_result(bot_coords, result, blocked):
                 line.append(' ')
         print(''.join(line))
 
-def get_visible_coords_test_one_case(coords, sight, result, blocked=None):
+def get_visible_coords_test_one_case(coords, curved, sight, result, blocked=None):
     battlefield = bot_game.Battlefield(100, 100)
-    seeing_bot = get_bot(coords, sight=sight)
+    
+    if curved:
+        seeing_bot = get_bot(coords, sight=sight, curved_sight=1)
+    else:
+        seeing_bot = get_bot(coords, sight=sight)
     
     battlefield.add_bot(seeing_bot)
     
@@ -94,16 +98,19 @@ def get_visible_coords_test_one_case(coords, sight, result, blocked=None):
 def get_bot_coords_in_layout(layout):
     y = 0
     for line in layout:
-        if not 'B' in line:
+        if not ('B' in line or 'C' in line):
             y += 1
             continue
-        x = line.find('B')
-        return (x, y)
+        if 'B' in line:
+            x = line.find('B')
+        elif 'C' in line:
+            x = line.find('C')
+        return x, y, 'C' in line
 
 def get_gvc_case(x, y, sight, layout):
     coords = (x, y)
     # check_layout_width(layout)
-    b_x, b_y = get_bot_coords_in_layout(layout)
+    b_x, b_y, curved = get_bot_coords_in_layout(layout)
     
     result = [coords]
     blocked = list()
@@ -118,8 +125,10 @@ def get_gvc_case(x, y, sight, layout):
             elif char == 'X':
                 result.append(true_coords)
                 blocked.append(true_coords)
+            elif char == 'x':
+                blocked.append(true_coords)
     
-    return coords, sight, result, blocked
+    return coords, curved, sight, result, blocked
 
 def read_gvc_test_cases(file_name='tests\\gvc_tests.txt'):
     cases = list()

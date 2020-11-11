@@ -415,7 +415,7 @@ def burn_and_spread_test_1(battlefield):
                               player='1',
                               message='RIGHT',
                               controller=spread_controller,
-                              spread=1,
+                              spread=2,
                               burn=9)
     battlefield.add_bot(spread_bot)
     

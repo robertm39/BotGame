@@ -226,7 +226,8 @@ class Battlefield:
         if not bot.coords in self.map:
             raise ValueError('bot.coords: {}'.format(bot.coords))
         
-        self.game_manager.handle_add_bot(bot)
+        if hasattr(self, 'game_manager'):
+            self.game_manager.handle_add_bot(bot)
         
         self.bots.append(bot)
         self.map[bot.coords].append(bot)
@@ -244,7 +245,8 @@ class Battlefield:
                 print('bot not in self.bots: {}'.format(bot))
             return
         
-        self.game_manager.handle_remove_bot(bot)
+        if hasattr(self, 'game_manager'):
+            self.game_manager.handle_remove_bot(bot)
         
         self.bots.remove(bot)
         self.map[bot.coords].remove(bot)
@@ -1062,6 +1064,15 @@ class GameManager:
             self.resolve_effects()
 
 import builds
+
+OVERRIDABLE = ('increase_hp',
+               'decrease_hp',
+               'change_hp',
+               'take_damage',
+               'is_dead',
+               'view',
+               'give_view',
+               'get_moves')
 class Bot:
     def __init__(self,
                  coords,
@@ -1077,6 +1088,8 @@ class Bot:
                  message,
                  controller,
                  **special_stats_dict):
+        
+        self._overrides = dict()
         
         self.coords = coords
         self.max_hp = max_hp
@@ -1101,8 +1114,35 @@ class Bot:
             special_stat = builds.STATS_FROM_NAMES[stat](val, self)
             self.special_stats.append(special_stat)
             self.codes.extend(special_stat.get_codes())
+            
+            #The overrides system allows special stats to modify the behavior
+            #of the bot
+            #This should let me move more stat code to where the stats are
+            #defined
+            for name in dir(special_stat):
+                if name[0] == '_':
+                    continue
+                print('name: {}'.format(name))
+                if not name in OVERRIDABLE:
+                    continue
+                override = getattr(special_stat, name)
+                if not callable(override):
+                    continue
+                if name in self._overrides:
+                    print('conflicting override: {}'.format(name))
+                self._overrides[name] = override
     
-    def increase_hp(self, amount):
+    #__getattr__ is only called if there aren't any matching attributes
+    def __getattribute__(self, name):
+        if name[0] == '_':
+            return super().__getattribute__(name)
+        
+        if name in self._overrides:
+            return self._overrides[name]
+        
+        return super().__getattribute__(name)
+    
+    def _increase_hp(self, amount):
         """
         Increase the bot.hp by the nonnegative amount given.
         The bot.hp will remain <= bot.max_hp.
@@ -1120,7 +1160,12 @@ class Bot:
         self.hp += increase
         return increase
     
-    def decrease_hp(self, amount):
+    #This pattern allows special stats to access the default methods
+    #The core methods start with _, so they can't be overridden
+    def increase_hp(self, amount):
+        return self._increase_hp(amount)
+    
+    def _decrease_hp(self, amount):
         """
         Decrease the bot.hp by the nonnegative amount given.
         THe bot.hp will remain >= 0.
@@ -1139,7 +1184,10 @@ class Bot:
         
         return decrease
     
-    def change_hp(self, amount):
+    def decrease_hp(self, amount):
+        return self._decrease_hp(amount)
+    
+    def _change_hp(self, amount):
         """
         Change the bot's hp by the given amount.
         It will remain that 0 <= bot.hp <= bot.max_hp
@@ -1157,7 +1205,10 @@ class Bot:
         
         return change
     
-    def take_damage(self, amount):
+    def change_hp(self, amount):
+        return self._change_hp(amount)
+    
+    def _take_damage(self, amount):
         """
         Take the given nonnegative amount of damage.
         
@@ -1172,7 +1223,10 @@ class Bot:
         
         return self.decrease_hp(amount)
     
-    def is_dead(self):
+    def take_damage(self, amount):
+        return self._take_damage(amount)
+    
+    def _is_dead(self):
         """
         Return whether the bot is dead.
         
@@ -1181,7 +1235,10 @@ class Bot:
         """
         return self.hp <= 0
     
-    def view(self):
+    def is_dead(self):
+        return self._is_dead()
+    
+    def _view(self):
         """
         Return the view that will be given to controllers.
         
@@ -1203,7 +1260,10 @@ class Bot:
         
         return result
     
-    def give_view(self, view):
+    def view(self):
+        return self._view()
+    
+    def _give_view(self, view):
         """
         Give the controller the view of the battlefield along with this
         bot's coords.
@@ -1213,7 +1273,10 @@ class Bot:
         """
         self.controller.give_view(view, self.view())
     
-    def get_moves(self):
+    def give_view(self, view):
+        return self._give_view(view)
+    
+    def _get_moves(self):
         """
         Return the bot's moves.
         
@@ -1221,6 +1284,9 @@ class Bot:
             moves: {MoveType -> [Move]}
         """
         return self.controller.get_moves()
+    
+    def get_moves(self):
+        return self._get_moves()
     
     def __str__(self):
         return 'Bot at ({}, {}),\n'.format(self.coords[0], self.coords[1]) + \
