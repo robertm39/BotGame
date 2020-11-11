@@ -485,8 +485,8 @@ def main():
     # absorb_test_2(battlefield)
     # spread_test_1(battlefield)
     # burn_test_1(battlefield)
-    # burn_and_spread_test_1(battlefield)
-    stealth_test_1(battlefield)
+    burn_and_spread_test_1(battlefield)
+    # stealth_test_1(battlefield)
     
     frame = BotGameDisplayFrame(root,
                                 game_manager,

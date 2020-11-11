@@ -9,16 +9,24 @@ from random import randint
 
 import bot_game as bg
 
-class Effect:
-    def __init__(self, sources, target):
-        self.sources = tuple(sources)
+class Event:
+    def __init__(self, source, target):
+        self.source = source
         self.target = target
+
+class Effect(Event):
+    def __init__(self, source, target, replacement_codes=tuple([])):
+        super().__init__(source, target)
+        self.replacement_codes = tuple(replacement_codes)
+        # self.sources = tuple(sources)
+        # self.target = target
+        
 #Every effect has a list of sources
 #and one target
 
 class DamageEffect(Effect):
-    def __init__(self, sources, target, damage):
-        super().__init__(sources, target)
+    def __init__(self, source, target, damage, replacement_codes=tuple([])):
+        super().__init__(source, target, replacement_codes)
         self.damage = damage
     
     def resolve(self, game_manager):
@@ -31,8 +39,8 @@ def get_random_damage(power):
     return sum([randint(0, 1) for _ in range(power)])
 
 class AttackEffect(Effect):
-    def __init__(self, sources, target, power):
-        super().__init__(sources, target)
+    def __init__(self, source, target, power, replacement_codes=tuple([])):
+        super().__init__(source, target, replacement_codes)
         self.power = power
     
     def resolve(self, game_manager):
@@ -47,12 +55,13 @@ class AttackEffect(Effect):
         bot = bots_at[0]
         damage = get_random_damage(self.power)
         
-        damage_effect = DamageEffect(self.sources + tuple([self]), bot, damage)
+        # damage_effect = DamageEffect(self.sources + tuple([self]), bot, damage)
+        damage_effect = DamageEffect(self.source, bot, damage)
         game_manager.register_effect(damage_effect)
 
 class GiveEnergyEffect(Effect):
-    def __init__(self, sources, target, amount):
-        super().__init__(sources, target)
+    def __init__(self, sources, target, amount, replacement_codes=tuple([])):
+        super().__init__(sources, target, replacement_codes)
         self.amount = amount
     
     def resolve(self, game_manager):

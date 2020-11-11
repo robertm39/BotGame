@@ -123,6 +123,7 @@ class MoveType(Enum):
     MOVE = 'MOVE'
     BUILD = 'BUILD'
     SET_MESSAGE = 'SET_MESSAGE'
+    SELF_DESTRUCT = 'SELF_DESTRUCT'
 
 class Direction(Enum):
     LEFT = 'LEFT'
@@ -427,11 +428,11 @@ class CodeDict:
         return self.codes.__iter__()
     
     def __getitem__(self, spec):
-        sources, target, event = spec
+        source, target, event = spec
         
         from_source = self.codes_from_sources[None].copy()
-        for source in sources:
-            from_source.extend(self.codes_from_sources.get(source, []))
+        # for source in sources:
+        from_source.extend(self.codes_from_sources.get(source, []))
         from_source = set(from_source)
         # print('from_source: {}'.format(from_source))
         
@@ -567,7 +568,7 @@ class GameManager:
         Return:
             bool: Whether any replacement codes were triggered.
         """
-        spec = (tuple(effect.sources), effect.target, type(effect))
+        spec = (effect.source, effect.target, type(effect))
         # print('spec: {}'.format(spec))
         replacements = self.replacement_codes[spec]
         # if len(replacements) > 0:
@@ -577,7 +578,8 @@ class GameManager:
             if replacement.fits(effect):
                 #An effect can only be replaced once
                 #by each replacement code
-                if not replacement in effect.sources:
+                # print('replacement_codes: {}'.format(effect.replacement_codes))
+                if not replacement in effect.replacement_codes:
                     replacement.trigger(self, effect)
                     return True
         return False
@@ -590,7 +592,7 @@ class GameManager:
             effect Effect: The effect to trigger triggered codes for.
         
         """
-        spec = (tuple(effect.sources), effect.target, type(effect))
+        spec = (effect.source, effect.target, type(effect))
         triggereds = self.triggered_codes[spec]
         for triggered in triggereds:
             if triggered.fits(effect):
@@ -842,7 +844,7 @@ class GameManager:
                 
                 attacked_coords.append(tc)
                 
-                attack_effect = eff.AttackEffect([bot], tc, bot.power)
+                attack_effect = eff.AttackEffect(bot, tc, bot.power)
                 self.register_effect(attack_effect)
             
             self.resolve_effects()
@@ -1050,6 +1052,13 @@ class GameManager:
             
             move = moves[0]
             bot.message = move.message
+    
+    def process_self_destructs(self, moves_from_bots):
+        for bot, moves in moves_from_bots:
+            if not moves:
+                continue
+            
+            self.battlefield.remove_bot(bot)
     
     def advance(self):
         """

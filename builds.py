@@ -37,10 +37,15 @@ class Code:
         self.events = tuple(events)
     
     def list_fits(self, l1, l2):
-        return (not l1) or (set(l1).intersection(l2))
+        # print('types:')
+        # print(type(l1))
+        # print(type(l2))
+        # s_l1 = set(l1)
+        
+        return (not l1) or set(l1).intersection(l2)
     
     def fits(self, event):
-        if not self.list_fits(self.sources, event.sources):
+        if not self.list_fits(self.sources, [event.source]):
             return False
         if not self.list_fits(self.targets, [event.target]):
             return False
@@ -105,9 +110,13 @@ class AbsorbReplacementCode(ReplacementCode):
         self.reduction_this_turn += damage_reduction
         
         reduced_damage = effect.damage - damage_reduction
-        new_effect = effects.DamageEffect(effect.sources + tuple([self]),
+        
+        replacements = effect.replacement_codes + tuple([self])
+        # new_effect = effects.DamageEffect(effect.sources + tuple([self]),
+        new_effect = effects.DamageEffect(effect.source,
                                           effect.target,
-                                          reduced_damage)
+                                          reduced_damage,
+                                          replacements)
         game_manager.register_effect(new_effect)
 STATS_FROM_NAMES['absorb'] = AbsorbStat
 
@@ -133,10 +142,6 @@ class BurnStat(SpecialStat):
         if round(self.value) != self.value:
             raise ValueError('value: {}'.format(value))
     
-    # def decrease_hp(self, amount):
-    #     print('decreasing hp: {}\n{}'.format(self.bot, amount))
-    #     self.bot._decrease_hp(amount)
-    
     def get_codes(self):
         return [self.code]
     
@@ -144,10 +149,11 @@ class BurnStat(SpecialStat):
         return 1 + self.value * 0.5
 
 class Burn:
-    def __init__(self, sources, target, power):
-        self.sources = tuple(sources)
+    def __init__(self, source, target, power, replacement_codes):
+        self.source = source
         self.target = target
         self.power = power
+        self.replacement_codes = replacement_codes
 
 class BurnReplacementCode(ReplacementCode):
     def __init__(self, value, bot):
@@ -166,9 +172,10 @@ class BurnReplacementCode(ReplacementCode):
     #Unless that bot knew all along it was facing a bot with burn
     def new_turn(self, game_manager):
         for burn in self.burns:
-            attack_effect = effects.AttackEffect(burn.sources,
+            attack_effect = effects.AttackEffect(burn.source,
                                                  burn.target,
-                                                 burn.power)
+                                                 burn.power,
+                                                 burn.replacement_codes)
             game_manager.register_effect(attack_effect)
         
         #Decrement the amount of time left on all burns
@@ -177,12 +184,15 @@ class BurnReplacementCode(ReplacementCode):
     
     def trigger(self, game_manager, effect):
         t_coords = effect.target
-        burn = Burn(effect.sources + tuple([self]), t_coords, effect.power)
+        replacements = effect.replacement_codes + tuple([self])
+        burn = Burn(effect.source, t_coords, effect.power, replacements)
         self.burns[burn] = self.value
         
-        new_attack = effects.AttackEffect(effect.sources + tuple([self]),
+        # new_attack = effects.AttackEffect(effect.sources + tuple([self]),
+        new_attack = effects.AttackEffect(effect.source,
                                           t_coords,
-                                          effect.power)
+                                          effect.power,
+                                          replacements)
         game_manager.register_effect(new_attack)
 STATS_FROM_NAMES['burn'] = BurnStat
 
@@ -230,9 +240,12 @@ class SpreadReplacementCode(ReplacementCode):
                                                   s_range=self.value)
         
         for t_coord in t_coords:
-            attack = effects.AttackEffect(effect.sources + tuple([self]),
+            # attack = effects.AttackEffect(effect.sources + tuple([self]),
+            replacements = effect.replacement_codes + tuple([self])
+            attack = effects.AttackEffect(effect.source,
                                           t_coord,
-                                          effect.power)
+                                          effect.power,
+                                          replacements)
             game_manager.register_effect(attack)
 STATS_FROM_NAMES['spread'] = SpreadStat
 
@@ -290,7 +303,7 @@ class StealthStat(SpecialStat):
         #Hasn't moved and the bot is another player's
         return None
     
-    def multipler(self):
+    def multiplier(self):
         return 2.0
 STATS_FROM_NAMES['stealth'] = StealthStat
 
@@ -303,9 +316,18 @@ STATS_FROM_NAMES['stealth'] = StealthStat
 #NoBuild
 #Tall
 #Curved Sight
+#Stealth
 
 #Unimplemented special stats:
-#Stealth
+#Fragile - dies after first attack or damage
+#Bomb - attacks own square after dieing
+#Extra Attacks X
+#Extra Builds X
+
+#no hard max
+#you just have to deal with your opponent building in your territory
+#it'll be expensive though
+#Extra Build Range X
 
 class BuildMove(bg.Move):
     def __init__(self,

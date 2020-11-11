@@ -298,4 +298,4 @@ class SpreadAttackController:
         moves = dict()
         moves[bg.MoveType.ATTACK] = [attack]
         return moves
-        
+
