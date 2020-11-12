@@ -84,12 +84,21 @@ def distance(coords_1, coords_2):
     
     return abs(x_1 - x_2) + abs(y_1 - y_2)
 
+def coords_at_distance(coords,
+                       distance,
+                       min_x=0,
+                       max_x=None,
+                       min_y=0,
+                       max_y=None):
+    result = list()
+
 def coords_within_distance(coords,
                            distance,
                            min_x=0,
                            max_x=None,
                            min_y=0,
-                           max_y=None):
+                           max_y=None,
+                           include_center=True):
     """
     Return all the coords within the given distance of the given coords,
     as long as they are in the given bounds.
@@ -113,7 +122,13 @@ def coords_within_distance(coords,
             result.append((cx - x, cy - y))
             result.append((cx + y, cy - x))
     
-    return filter_in_bounds_coords(result, min_x, max_x, min_y, max_y)
+    if include_center:
+        return filter_in_bounds_coords(result, min_x, max_x, min_y, max_y)
+    
+    result = filter_in_bounds_coords(result, min_x, max_x, min_y, max_y)
+    if coords in result:
+        result.remove(coords)
+    return result
 
 class MoveType(Enum):
     GIVE_ENERGY = 'GIVE_ENERGY'
@@ -177,6 +192,20 @@ def coords_in_direction(coords, direction):
     else:
         raise ValueError('direction: {}'.format(direction))    
 
+def get_direction(c1, c2):
+    d = diff(c1, c2)
+    
+    if d == (1, 0):
+        return Direction.RIGHT
+    if d == (-1, 0):
+        return Direction.LEFT
+    if d == (0, 1):
+        return Direction.DOWN
+    if d == (0, -1):
+        return Direction.UP
+    
+    return None
+
 #the battlefield is zero-indexed
 class Battlefield:
     def __init__(self, width, height):
@@ -187,6 +216,9 @@ class Battlefield:
         
         self.bots = list()
         self.bots_from_speeds = dict()
+        
+        self.edge_view = WallView('edge')
+        self.corner_view = WallView('corner')
         
         #Initialize map to an empty list everywhere
         for x in range(self.width):
@@ -360,6 +392,26 @@ class Battlefield:
         """
         return is_in_bounds(coords, 0, self.width-1, 0, self.height-1)
     
+    def get_wall_view(self, coords):
+        """
+        Return a list of the appropriate wall view if there is one, else [].
+        
+        Parameters:
+            coords (int, int): The coords to return wall views of.
+        
+        Return:
+            [WallView]: A list with the wall view, or else [].
+        """
+        x, y = coords
+        #This works
+        boundaries = sum([x==0, y==0, x==self.width-1, y==self.height-1])
+        
+        if boundaries == 1:
+            return [self.edge_view]
+        elif boundaries == 2:
+            return [self.corner_view]
+        return list()
+    
     def test_energys_all_positive(self):
         """
         Raise a ValueError if any bots have negative energy.
@@ -508,7 +560,8 @@ class GameManager:
             visible_coords = self.battlefield.get_visible_coords(bot)
             view = dict()
             for coords in visible_coords:
-                view[coords] = list()
+                # view[coords] = list()
+                view[coords] = self.battlefield.get_wall_view(coords)
                 for item in self.battlefield.at(coords):
                     item_view = item.view(bot)
                     #If item_view == None, it's invisible
@@ -1001,7 +1054,8 @@ class GameManager:
                 continue
             
             move = moves[0]
-            t_coords = coords_in_direction(bot.coords, move.direction)
+            t_coords = move.coords
+            # t_coords = coords_in_direction(bot.coords, move.direction)
             
             if self.battlefield.bots_at(t_coords):
                 #Can't build a bot where there already is a bot
@@ -1404,3 +1458,21 @@ class EnergySourceView:
     def __str__(self):
         return 'Energy Source view at ({}, {}), amount={}'\
                .format(self.coords[0], self.coords[1], self.amount)
+
+#The purpose of this is so that bots will know the boundaries of the field
+#It is not the view of any object
+class WallView:
+    def __init__(self, t):
+        self.type = t
+        self._initialized = True
+    
+    def __setattr__(self, name, val):
+        if hasattr(self, '_initialized'):
+            if name[0] != '_':
+                err_message = 'cannot set attr of view: {} {}'.format(name, val)
+                raise RuntimeError(err_message)
+        
+        self.__dict__[name] = val
+    
+    def __str__(self):
+        return self.type

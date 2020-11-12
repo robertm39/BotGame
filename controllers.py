@@ -286,8 +286,8 @@ class SpreadAttackController:
         
         coords = self.owner_view.coords
         
-        #Target a square that makes it so that the spread doesn't hit
-        #this robot
+        #Target a square that makes it so that the spread doesn't
+        #hit this robot
         t_coords = coords
         attack_range = self.owner_view.attack_range
         spread = self.owner_view.spread
@@ -299,3 +299,82 @@ class SpreadAttackController:
         moves[bg.MoveType.ATTACK] = [attack]
         return moves
 
+#This will be the first general controller
+#The idea is to spread out, colonize energy sources, and attack enemies
+def of_type(t, coords, view):
+    return [i for i in view[coords] if i.type == t]
+
+class BasicController:
+    def __init__(self):
+        self.view = None
+        self.owner_view = None
+        self.directions = list()
+    
+    def set_directions(self):
+        message = self.owner_view.message
+        if message:
+            for word in message.split():
+                d = bg.Direction.__dict__.get(message, None)
+                if d:
+                    self.directions.append(d)
+        else:
+            #Should be the first bot
+            x, y = self.owner_view.coords
+            if x == 0:
+                if y == 0:
+                    #Upper-left
+                    self.directions = [bg.Direction.DOWN, bg.Direction.RIGHT]
+                else:
+                    #Lower-left
+                    self.directions = [bg.Direction.UP, bg.Direction.RIGHT]
+            else:
+                if y == 0:
+                    #Upper-right
+                    self.directions = [bg.Direction.DOWN, bg.Direction.LEFT]
+                else:
+                    #Lower-right
+                    self.directions = [bg.Direction.UP, bg.Direction.LEFT]
+                    
+    
+    def give_view(self, view, owner_view):
+        self.view = view
+        self.owner_view = owner_view
+        
+        if not self.directions:
+            self.set_directions()
+    
+    #If you're on an energy source, either build or give energy
+    #If you're not, either go to an energy source, fight, or search
+    def get_moves(self):
+        coords = self.owner_view.coords
+        items_at = self.view[coords]
+        es_at = [i for i in items_at if i.type == 'EnergySource']
+        is_es_at = len(es_at) > 0
+        
+        if is_es_at:
+            #Either build or give energy
+            adj = bg.coords_within_distance(coords,
+                                            1,
+                                            include_center=False)
+            adj_wo_bot = [c for c in adj if not of_type('Bot', c, self.view)]
+            print('adj_wo_bot: {}'.format(adj_wo_bot))
+            
+            moves = dict()
+            
+            #Build in one of the empty spots
+            if adj_wo_bot:
+                build_coords = choice(adj_wo_bot)
+                # b_dir = bg.get_direction(coords, build_coords)
+                build_move = builds.BuildMove(build_coords,
+                                              max_hp=10,
+                                              power=10,
+                                              attack_range=1,
+                                              speed=0,
+                                              sight=10,
+                                              energy=0,
+                                              movement=1,
+                                              message=self.owner_view.message)
+                
+                moves[bg.MoveType.BUILD] = [build_move]
+                return moves
+        

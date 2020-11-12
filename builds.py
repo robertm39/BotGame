@@ -155,6 +155,7 @@ class Burn:
         self.power = power
         self.replacement_codes = replacement_codes
 
+#TODO make it so burn always comes after spread
 class BurnReplacementCode(ReplacementCode):
     def __init__(self, value, bot):
         super().__init__([bot], [], [effects.AttackEffect])
@@ -329,9 +330,13 @@ STATS_FROM_NAMES['stealth'] = StealthStat
 #it'll be expensive though
 #Extra Build Range X
 
+#Flamethrower X
+#Immune #isn't hurt when it would damage itself
+
 class BuildMove(bg.Move):
     def __init__(self,
-                 direction,
+                 # direction,
+                 coords,
                  max_hp,
                  power,
                  attack_range,
@@ -341,7 +346,8 @@ class BuildMove(bg.Move):
                  movement,
                  message,
                  **special_stats):
-        self.direction = direction
+        # self.direction = direction
+        self.coords = coords
         self.max_hp = max_hp
         self.power = power
         self.attack_range = attack_range
