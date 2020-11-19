@@ -45,15 +45,16 @@ def is_in_bounds(coords, min_x, max_x, min_y, max_y):
         max_y (int): The maximum y-value allowed.
     """
     x, y = coords
+    # print('is_in_bounds: {}'.format(coords))
     
-    if min_x and min_x > x:
+    if (min_x != None) and min_x > x:
         return False
-    if max_x and max_x < x:
+    if (max_x != None) and max_x < x:
         return False
     
-    if min_y and min_y > y:
+    if (min_y != None) and min_y > y:
         return False
-    if max_y and max_y < y:
+    if (max_y != None) and max_y < y:
         return False
     
     return True
@@ -90,7 +91,22 @@ def coords_at_distance(coords,
                        max_x=None,
                        min_y=0,
                        max_y=None):
+    if distance == 0:
+        return [coords]
+    
     result = list()
+    
+    cx, cy = coords
+    
+    for x in range(0, distance):
+        y = distance - x
+        
+        result.append((cx + x, cy + y))
+        result.append((cx - y, cy + x))
+        result.append((cx - x, cy - y))
+        result.append((cx + y, cy - x))
+    
+    return result
 
 def coords_within_distance(coords,
                            distance,
@@ -228,6 +244,10 @@ class Battlefield:
     def at(self, coords):
         return self.map.get(coords, list())
     
+    def of_type_at(self, coords, t):
+        items_at = self.at(coords)
+        return [i for i in items_at if isinstance(i, t)]
+    
     def bots_at(self, coords):
         items_at = self.at(coords)
         return [b for b in items_at if isinstance(b, Bot)]
@@ -250,6 +270,17 @@ class Battlefield:
             return self.add_bot(item)
         
         self.map[item.coords].append(item)
+    
+    def remove_item(self, item, should_have=True):
+        if isinstance(item, Bot):
+            return self.remove_bot(item)
+        
+        items_there = self.at(item.coords)
+        if not item in items_there:
+            if should_have:
+                print('item not in map: {}'.format(item))
+            return
+        items_there.remove(item)
     
     def add_bot(self, bot):
         if bot in self.bots:
@@ -561,12 +592,20 @@ class GameManager:
             view = dict()
             for coords in visible_coords:
                 # view[coords] = list()
-                view[coords] = self.battlefield.get_wall_view(coords)
+                # view[coords] = self.battlefield.get_wall_view(coords)
+                #Now view is {(int, int): {str: item_view}}
+                #instead of  {(int, int): [item_view]}
+                view[coords] = dict()
+                wall_view = self.battlefield.get_wall_view(coords)
+                if wall_view:
+                    view[coords]['Wall'] = wall_view[0]
+                    
                 for item in self.battlefield.at(coords):
                     item_view = item.view(bot)
                     #If item_view == None, it's invisible
                     if item_view:
-                        view[coords].append(item_view)
+                        # view[coords].append(item_view)
+                        view[coords][item_view.type] == item_view
             
             bot.give_view(view)
     

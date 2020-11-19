@@ -9,10 +9,18 @@ import tkinter as tk
 
 import bot_game
 import controllers
-from tests import get_bot
+# from tests import get_bot
+import setups
 
 class BotGameDisplayFrame(tk.Frame):
-    def __init__(self, parent, game_manager, square_size=10, frame_delay=1000):
+    def __init__(self,
+                 parent,
+                 game_manager,
+                 view_width=500,
+                 view_height=500,
+                 square_size=10,
+                 font_size=10,
+                 frame_delay=1000):
         tk.Frame.__init__(self, parent, background='white')
         
         self.parent = parent
@@ -20,26 +28,60 @@ class BotGameDisplayFrame(tk.Frame):
         
         self.battlefield = game_manager.battlefield
         self.game_manager = game_manager
+        
+        self.view_width = view_width
+        self.view_height = view_height
         self.square_size = square_size
+        self.font_size = font_size
         
         self.frame_delay = frame_delay
         
         self.init_gui()
     
+    # def config_canvas(self, *args):
+    #     pass
+    #     # w, h = self.winfo_width(), self.winfo_height()
+    #     # self.canvas.config(width=w, height=h)
+    
     def init_gui(self):
-        self.pack(fill=tk.BOTH, expand=True)
+        self.pack(fill=tk.BOTH)#, expand=True)
         
         self.width = self.square_size * self.battlefield.width + 1
         self.height = self.square_size * self.battlefield.height + 1
         
+        self.config(width=self.width, height=self.height)
+        
+        self.right_scroll = tk.Scrollbar(self)
+        # self.right_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.right_scroll.grid(row=0, column=1, sticky=tk.N+tk.S+tk.E+tk.W)
+        
+        self.bottom_scroll = tk.Scrollbar(self, orient=tk.HORIZONTAL)
+        # self.bottom_scroll.pack(side=tk.BOTTOM, fill=tk.X)
+        self.bottom_scroll.grid(row=1, column=0, sticky=tk.N+tk.S+tk.E+tk.W)
+        
+        # w, h = self.winfo_width(), self.winfo_height()
+        
         self.canvas = tk.Canvas(self,
-                                width=self.width,
-                                height=self.height,
+                                width=self.view_width,
+                                height=self.view_height,
                                 borderwidth=0,
                                 highlightthickness=0,
+                                yscrollcommand=self.right_scroll.set,
+                                xscrollcommand=self.bottom_scroll.set,
                                 bd=1,
                                 bg='white')
-        self.canvas.pack(side=tk.TOP)
+        
+        #Configure the canvas when the size of this widget is changed (??)
+        # self.bind('<Configure>', self.config_canvas)
+        
+        # self.canvas.pack(side=tk.TOP, fill=tk.BOTH)
+        self.canvas.grid(row=0, column=0)#, stick=tk.N+tk.S+tk.E+tk.W)
+        
+        self.right_scroll.config(command=self.canvas.yview)
+        self.bottom_scroll.config(command=self.canvas.xview)
+        
+        # self.canvas.config(scrollregion=self.canvas.bbox('all'))
+        self.canvas.config(scrollregion=[0, 0, self.width, self.height])
         
         # self.canvas.create_line(10, 10, 10, 10, fill='blue')
         
@@ -96,7 +138,7 @@ class BotGameDisplayFrame(tk.Frame):
             
             self.canvas.create_text((x+0.5)*self.square_size + 1,
                                     (y+0.5)*self.square_size + 1,
-                                    font=('Consolas', 15),
+                                    font=('Consolas', self.font_size),
                                     text=str(es.amount),
                                     tags='ENERGY_SOURCE')
     
@@ -126,7 +168,7 @@ class BotGameDisplayFrame(tk.Frame):
             
             self.canvas.create_text((x+0.5)*self.square_size + 1,
                                     (y+0.5)*self.square_size + 1,
-                                    font=('Consolas', 15),
+                                    font=('Consolas', self.font_size),
                                     text=str(bot.hp),
                                     tags='BOT')
     
@@ -469,11 +511,14 @@ def stealth_test_1(battlefield):
                                      controller=fight_controller)
     battlefield.add_bot(fight_bot)
 
+def setups_test_1(battlefield):
+    setups.make_random_energy_sources(battlefield, num=25, border=3)
+
 def main():
     root = tk.Tk()
-    root.geometry('600x600+400+100')
+    root.geometry('720x720+400+30')
     
-    battlefield = bot_game.Battlefield(10, 10)
+    battlefield = bot_game.Battlefield(64, 64)
     
     game_manager = bot_game.GameManager(battlefield)
     
@@ -485,12 +530,29 @@ def main():
     # absorb_test_2(battlefield)
     # spread_test_1(battlefield)
     # burn_test_1(battlefield)
-    burn_and_spread_test_1(battlefield)
+    # burn_and_spread_test_1(battlefield)
     # stealth_test_1(battlefield)
+    setups_test_1(battlefield)
+    
+    #Setup scrollbar
+    # right_scrollbar = tk.Scrollbar(root)
+    # right_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    # bottom_scrollbar = tk.Scrollbar(root)
+    # bottom_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+    
+    # panel = tk.Frame(root)
+    # panel.pack(side=tk.LEFT, fill=tk.BOTH)
+    
+    # right_scrollbar.config(command=panel.yview)
+    # bottom_scrollbar.config(command=panel.xview)
     
     frame = BotGameDisplayFrame(root,
                                 game_manager,
-                                square_size=50,
+                                view_width=700,
+                                view_height=700,
+                                square_size=20,
+                                font_size=8,
                                 frame_delay=1000)
     tk.app = frame
     

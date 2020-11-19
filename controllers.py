@@ -301,8 +301,8 @@ class SpreadAttackController:
 
 #This will be the first general controller
 #The idea is to spread out, colonize energy sources, and attack enemies
-def of_type(t, coords, view):
-    return [i for i in view[coords] if i.type == t]
+# def of_type(t, coords, view):
+#     return [i for i in view[coords] if i.type == t]
 
 class BasicController:
     def __init__(self):
@@ -356,7 +356,7 @@ class BasicController:
             adj = bg.coords_within_distance(coords,
                                             1,
                                             include_center=False)
-            adj_wo_bot = [c for c in adj if not of_type('Bot', c, self.view)]
+            adj_wo_bot = [c for c in adj if not 'Bot' in self.view[c]]
             print('adj_wo_bot: {}'.format(adj_wo_bot))
             
             moves = dict()
@@ -377,4 +377,13 @@ class BasicController:
                 
                 moves[bg.MoveType.BUILD] = [build_move]
                 return moves
+            
+            #There's a bot in one of the empty spots
+            adj_w_bot = [c for c in adj if not c in adj_wo_bot]
+            adj_w_ally = [c for c in adj_w_bot if\
+                          self.view[c]['Bot'].player == self.owner_view.player]
+            
+            if adj_w_ally:
+                ally_c = choice(adj_w_ally)
+                
         
