@@ -158,12 +158,16 @@ class BotGameDisplayFrame(tk.Frame):
         for bot in bots:
             x, y = bot.coords
             
+            #Different players have different colors
+            color = 'red' if bot.player == '1' else 'blue'
+            
             self.canvas.create_oval(x*self.square_size + upper_left + 1,
                                     y*self.square_size + upper_left + 1,
                                     x*self.square_size + size + 1,
                                     y*self.square_size + size + 1,
                                     outline='black',
-                                    fill='lightgray',
+                                    # fill='lightgray',
+                                    fill=color,
                                     tags='BOT')
             
             self.canvas.create_text((x+0.5)*self.square_size + 1,
@@ -173,14 +177,27 @@ class BotGameDisplayFrame(tk.Frame):
                                     tags='BOT')
     
     def update_frame(self):
-        self.game_manager.advance()
+        result = self.game_manager.advance()
         self.draw_bots()
+        return result
     
     def loop(self):
-        self.update_frame()
+        game_still_going = self.update_frame()
         self.frame_num += 1
-        print('\nFrame {}'.format(self.frame_num))
-        self.after(self.frame_delay, self.loop)
+        print('Frame {}'.format(self.frame_num))
+        
+        #Something is up with this
+        #It keeps increasing
+        # print(len(self.battlefield.bots))
+        # for coords, items in self.battlefield.map.items():
+        #     bots = [b for b in items if isinstance(b, bot_game.Bot)]
+        #     print('{}, {}'.format(coords, len(bots)))
+        
+        # dead_bots = [b for b in self.battlefield.bots if b.hp == 0]
+        # print(len(dead_bots))
+        
+        if game_still_going:
+            self.after(self.frame_delay, self.loop)
     
     def start_loop(self):
         self.frame_num = 0
@@ -323,7 +340,6 @@ def absorb_test_1(battlefield):
                              movement=1,
                              player='2',
                              message='RIGHT',
-                             # absorb=1,
                              controller=fight_controller_2)
     
     battlefield.add_bot(absorb_bot)
@@ -512,7 +528,7 @@ def stealth_test_1(battlefield):
     battlefield.add_bot(fight_bot)
 
 def setups_test_1(battlefield):
-    setups.make_random_energy_sources(battlefield, num=1, border=1)
+    setups.make_random_energy_sources(battlefield, num=5, border=1)
     
     es_1, es_2 = setups.get_start_energy_sources(10, battlefield)
     battlefield.add_item(es_1)
@@ -531,7 +547,7 @@ def main():
     
     #Full size is 64x64
     #But I want to see the whole thing for testing
-    battlefield = bot_game.Battlefield(4, 4)
+    battlefield = bot_game.Battlefield(16, 16)
     
     game_manager = bot_game.GameManager(battlefield)
     

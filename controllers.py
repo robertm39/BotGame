@@ -352,6 +352,7 @@ class BasicController:
         
         if not self.directions:
             self.set_directions()
+            # print(self.directions)
             if not self.owner_view.message:
                 for d in self.directions:
                     add = str(d).split('.')[1]
@@ -365,10 +366,8 @@ class BasicController:
     #If you're not, either go to an energy source, fight, or search
     def get_moves(self):
         coords = self.owner_view.coords
-        # print('view here: {}'.format(self.view.get(coords, None)))
         items_at = self.view[coords]
-        # es_at = [i for i in items_at if i.type == 'EnergySource']
-        # is_es_at = len(es_at) > 0
+        
         is_es_at = 'EnergySource' in items_at
         
         #Get all this info up front
@@ -429,7 +428,8 @@ class BasicController:
                 give_en_coords = choice(adj_w_ally)
                 
                 give_energy_move = bg.Move(move_type=bg.MoveType.GIVE_ENERGY,
-                                           target_coords=give_en_coords)
+                                           target_coords=give_en_coords,
+                                           amount=self.owner_view.energy)
                 #Add amount later
                 moves[bg.MoveType.GIVE_ENERGY] = [give_energy_move]
             
