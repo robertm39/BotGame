@@ -9,7 +9,16 @@ import random
 
 import bot_game
 
-def get_start_bots(con_1, con_2, width, height):
+def get_start_bots(con_1,
+                   con_2,
+                   battlefield=None,
+                   width=None,
+                   height=None):
+    
+    if battlefield:
+        width = width if width else battlefield.width
+        height = height if height else battlefield.height
+    
     bot_1 = bot_game.Bot(coords=(0, 0),
                          max_hp=1,
                          hp=1,
@@ -38,9 +47,16 @@ def get_start_bots(con_1, con_2, width, height):
     
     return bot_1, bot_2
 
-def get_start_energy_sources(width, height):
-    es_1 = bot_game.EnergySource((0, 0), 5)
-    es_2 = bot_game.EnergySource((width-1, height-1), 5)
+def get_start_energy_sources(amount=5,
+                             battlefield=None,
+                             width=None,
+                             height=None):
+    if battlefield:
+        width = width if width else battlefield.width
+        height = height if height else battlefield.height
+    
+    es_1 = bot_game.EnergySource((0, 0), amount)
+    es_2 = bot_game.EnergySource((width-1, height-1), amount)
     
     return es_1, es_2
 

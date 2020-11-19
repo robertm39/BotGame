@@ -205,7 +205,7 @@ class Move:
         self.valid = True
     
     def check_vals(self):
-        for field, t in FIELDS_FROM_MOVE_TYPES[self.move_type].items():
+        for field, t in FIELDS_FROM_MOVE_TYPES[self.move_type]:
             if not hasattr(self, field):
                 self.valid = False
                 return
@@ -356,6 +356,7 @@ class Battlefield:
         self.map[bot.coords].remove(bot)
         self.bots_from_speeds[bot.speed].remove(bot)
     
+    #TODO invisible bots shouldn't block vision even if they're Tall
     def get_visible_coords(self,
                            bot=None,
                            c_coords=None,
@@ -416,7 +417,7 @@ class Battlefield:
         
         return result
     
-    def is_visible_for(self, bot, t_coords, s_range=None, curved=None):
+    def is_visible_for(self, bot, t_coords, s_range=None, curved_s=None):
         """
         Return whether the given coords are visible for the given bot.
         
@@ -430,7 +431,7 @@ class Battlefield:
         #This can be optimized, but it doesn't need to be
         return t_coords in self.get_visible_coords(bot,
                                                    s_range=s_range,
-                                                   curved=curved)
+                                                   curved_s=curved_s)
     
     def set_coords(self, item, coords):
         """
@@ -554,6 +555,8 @@ class CodeDict:
     
     def __getitem__(self, spec):
         source, target, event = spec
+        # print('spec: {}'.format(spec))
+        # print('source: {}'.format(source))
         
         from_source = self.codes_from_sources[None].copy()
         # for source in sources:
@@ -647,7 +650,7 @@ class GameManager:
                     #If item_view == None, it's invisible
                     if item_view:
                         # view[coords].append(item_view)
-                        view[coords][item_view.type] == item_view
+                        view[coords][item_view.type] = item_view
             
             bot.give_view(view)
     
@@ -661,13 +664,16 @@ class GameManager:
         # all_moves = {bot:bot.get_moves() for bot in self.battlefield.bots}
         all_moves = dict()
         for bot in self.battlefield.bots:
-            try:
-                all_moves[bot] = bot.get_moves()
-            except Exception as err:
-                #If the bot's get_moves() method throws an exception,
-                #The bot just doesn't do anything
-                print('bot threw exception {}:\n{}'.format(err, bot))
-                all_moves[bot] = dict()
+            # try:
+            all_moves[bot] = bot.get_moves()
+            # except Exception as err:
+            #     #If the bot's get_moves() method throws an exception,
+            #     #The bot just doesn't do anything
+            #     print('')
+            #     print(type(err))
+            #     print(repr(err))
+            #     print('bot threw exception {}:\n{}'.format(err, bot))
+            #     all_moves[bot] = dict()
         
         result = {t:dict() for t in MoveType}
         
@@ -769,7 +775,8 @@ class GameManager:
             
             es = sources[0]
             bot = bots[0]
-            effect = eff.GiveEnergyEffect([es], bot, es.amount)
+            # effect = eff.GiveEnergyEffect([es], bot, es.amount)
+            effect = eff.GiveEnergyEffect(es, bot, es.amount)
             self.register_effect(effect)
         self.resolve_effects()
     
@@ -1164,32 +1171,33 @@ class GameManager:
                 continue
             
             move = moves[0]
-            t_coords = move.coords
-            r = bot.build_range if hasattr(bot, 'build_range') else 1
-            if not self.battlefield.is_visible_for(bot, t_coords, s_range=r):
-                continue
-            
-            # t_coords = coords_in_direction(bot.coords, move.direction)
-            
-            if self.battlefield.bots_at(t_coords):
-                #Can't build a bot where there already is a bot
-                continue
             
             try:
-                if move.cost > bot.energy:
-                    #The bot cannot afford the build, so it doesn't happen
+                t_coords = move.coords
+                r = bot.build_range if hasattr(bot, 'build_range') else 1
+                if not self.battlefield.is_visible_for(bot, t_coords, s_range=r):
                     continue
-            except Exception as err:
-                print('Exception when processing BUILD move:')
-                print(err)
-                continue
+                
+                # t_coords = coords_in_direction(bot.coords, move.direction)
+                
+                if self.battlefield.bots_at(t_coords):
+                    #Can't build a bot where there already is a bot
+                    continue
+                
+                try:
+                    if move.cost > bot.energy:
+                        #The bot cannot afford the build, so it doesn't happen
+                        continue
+                except Exception as err:
+                    print('Exception when processing BUILD move:')
+                    print(err)
+                    continue
+                
+                #Make a new controller of the same type
+                #real controllers will need inits that only take message
+                #as an argument
+                controller = type(bot.controller)()
             
-            #Make a new controller of the same type
-            #real controllers will need inits that only take message
-            #as an argument
-            controller = type(bot.controller)()
-            
-            try:
                 new_bot = Bot(t_coords,
                               move.max_hp,
                               move.max_hp,
@@ -1544,7 +1552,7 @@ class EnergySource:
         self.amount = amount
         self.cached_view = EnergySourceView(self.coords, self.amount)
     
-    def view(self):
+    def view(self, bot):
         """
         Return the object to be given to the bot code.
         """

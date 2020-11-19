@@ -513,12 +513,25 @@ def stealth_test_1(battlefield):
 
 def setups_test_1(battlefield):
     setups.make_random_energy_sources(battlefield, num=25, border=3)
+    
+    es_1, es_2 = setups.get_start_energy_sources(5, battlefield)
+    battlefield.add_item(es_1)
+    battlefield.add_item(es_2)
+    
+    con_1 = controllers.BasicController()
+    con_2 = controllers.BasicController()
+    
+    bot_1, bot_2 = setups.get_start_bots(con_1, con_2, battlefield)
+    battlefield.add_item(bot_1)
+    battlefield.add_item(bot_2)
 
 def main():
     root = tk.Tk()
     root.geometry('720x720+400+30')
     
-    battlefield = bot_game.Battlefield(64, 64)
+    #Full size is 64x64
+    #But I want to see the whole thing for testing
+    battlefield = bot_game.Battlefield(32, 32)
     
     game_manager = bot_game.GameManager(battlefield)
     

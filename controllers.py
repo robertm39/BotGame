@@ -309,6 +309,7 @@ class BasicController:
         self.view = None
         self.owner_view = None
         self.directions = list()
+        self.message_to_give = ''
     
     def set_directions(self):
         message = self.owner_view.message
@@ -339,30 +340,67 @@ class BasicController:
     def give_view(self, view, owner_view):
         self.view = view
         self.owner_view = owner_view
+        self.coords = self.owner_view.coords
+        self.player = self.owner_view.player
+        
+        # for c, items in self.view.items():
+        #     print(items)
+        # print('')
         
         if not self.directions:
             self.set_directions()
+            for d in self.directions:
+                add = str(d).split('.')[1]
+                self.message_to_give = self.message_to_give + ' ' + add
+            # print('self.message_to_give: {}'.format(self.message_to_give))
     
     #If you're on an energy source, either build or give energy
     #If you're not, either go to an energy source, fight, or search
     def get_moves(self):
         coords = self.owner_view.coords
+        # print('view here: {}'.format(self.view.get(coords, None)))
         items_at = self.view[coords]
-        es_at = [i for i in items_at if i.type == 'EnergySource']
-        is_es_at = len(es_at) > 0
+        # es_at = [i for i in items_at if i.type == 'EnergySource']
+        # is_es_at = len(es_at) > 0
+        is_es_at = 'EnergySource' in items_at
+        
+        #Get all this info up front
+        adj = bg.coords_within_distance(coords,
+                                        1,
+                                        include_center=False)
+        
+        #Only deal with visible coords
+        adj = [c for c in adj if c in self.view]
+        
+        adj_wo_bot = [c for c in adj if not 'Bot' in self.view[c]]
+        adj_w_bot = [c for c in adj if not c in adj_wo_bot]
+        adj_w_ally = [c for c in adj_w_bot if\
+                      self.view[c]['Bot'].player == self.owner_view.player]
+        adj_w_enemy = [b for b in adj_w_bot if not b in adj_w_ally]
         
         moves = dict()
+        
+        #Always attack if there's an enemy adjacent
+        if adj_w_enemy:
+                attack_coords = choice(adj_w_enemy)
+                
+                attack_move = bg.Move(move_type=bg.MoveType.ATTACK,
+                                      target_coords=attack_coords)
+                
+                moves[bg.MoveType.ATTACK] = [attack_move]
+                
         if is_es_at:
             #Either build or give energy
             adj = bg.coords_within_distance(coords,
                                             1,
                                             include_center=False)
-            adj_wo_bot = [c for c in adj if not 'Bot' in self.view[c]]
-            print('adj_wo_bot: {}'.format(adj_wo_bot))
+            # print('adj_wo_bot: {}'.format(adj_wo_bot))
             
             
             #Build in one of the empty spots
+            building = False
             if adj_wo_bot:
+                building = True
                 build_coords = choice(adj_wo_bot)
                 # b_dir = bg.get_direction(coords, build_coords)
                 build_move = builds.BuildMove(build_coords,
@@ -373,19 +411,81 @@ class BasicController:
                                               sight=10,
                                               energy=0,
                                               movement=1,
-                                              message=self.owner_view.message)
+                                              message=self.message_to_give)
                 
                 moves[bg.MoveType.BUILD] = [build_move]
                 # return moves
             
             #There's a bot in one of the empty spots
-            adj_w_bot = [c for c in adj if not c in adj_wo_bot]
-            adj_w_ally = [c for c in adj_w_bot if\
-                          self.view[c]['Bot'].player == self.owner_view.player]
             
-            if adj_w_ally:
-                ally_c = choice(adj_w_ally)
-                give_en_coords = ally_c.coords
+            if adj_w_ally and not building:
+                give_en_coords = choice(adj_w_ally)
                 
-                give_energy_move
+                give_energy_move = bg.Move(move_type=bg.MoveType.GIVE_ENERGY,
+                                           target_coords=give_en_coords)
+                moves[bg.MoveType.GIVE_ENERGY] = [give_energy_move]
+            
+            return moves
+        else:
+            #Not on an energy source
+            #Either look for an energy source or look for an enemy
+            
+            #Look for an energy source
+            energy_sources = list()
+            # print('self.view: {}'.format(self.view))
+            # print('')
+            # print(type(self.view))
+            for _, items in self.view.items():
+            # for _, items in self.view:
+                # print('checking for ES and Bot')
+                # sources_at = [s for s in items if s.type == 'EnergySource']
+                # bots_at = [s for s in items if s.type == 'Bot']
+                if 'EnergySource' in items and not 'Bot' in items:
+                    energy_sources.append(items['EnergySource'])
+                # source_at = items.get('EnergySource', None)
+                # has_bot = 'Bot' in items
+                # #Don't go to occupied places
+                # if source_at and not has_bot:
+                #     energy_sources.append(source)
+            
+            if energy_sources:
+                target_coords = choice(energy_sources).coords
+                
+                approach_moves = get_approach_moves(self.coords,
+                                                    target_coords)
+                moves[bg.MoveType.MOVE] = approach_moves
+            else:
+                #Look for an enemy instead
+                enemies = list()
+                for _, items in self.view.items():
+                # for _, items in self.view:
+                    if 'Bot' in items and items['Bot'].player != self.player:
+                        enemies.append(items['Bot'])
+                    # bots_at = [i for i in items if i.type == 'Bot']
+                    # enemies_at = [b for b in bots_at if b.player != self.player]
+                    
+                    # if enemies_at:
+                    #     enemies.extend(enemies_at)
+                
+                if enemies:
+                    target_coords = choice(enemies).coords
+                    
+                    approach_moves = get_approach_moves(self.coords,
+                                                        target_coords)
+                    moves[bg.MoveType.MOVE] = approach_moves
+                elif self.directions:
+                    # print('Wandering')
+                    #There's nothing in sight, so just wander
+                    d = choice(self.directions)
+                    move = bg.Move(bg.MoveType.MOVE,
+                                   direction=d)
+                    moves[bg.MoveType.MOVE] = [move]
+                else:
+                    #We don't have any directions
+                    #So just go up
+                    print('no directions, going up')
+                    move = bg.Move(bg.MoveType.MOVE,
+                                   direction=bg.Direction.UP)
+                    moves[bg.MoveType.MOVE] = [move]
         
+        return moves

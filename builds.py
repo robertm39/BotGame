@@ -359,6 +359,12 @@ class BuildMove(bg.Move):
         self.special_stats_dict = special_stats.copy() #{name: val}
         self.special_stats = list()
         
+        #Don't check for validity of Build moves in the BuildMove class
+        #Just treat all as valid
+        #this is a truthy value so it'll work
+        #But if you print it, you'll see there wasn't really a check
+        self.valid = 'NA'
+        
         for name, val in special_stats.items():
             self.__setattr__(name, val)
             stat_class = STATS_FROM_NAMES[name]
@@ -367,6 +373,9 @@ class BuildMove(bg.Move):
         
         self.calculate_cost()
         #Now self.cost is initialized
+    
+    # def check_vals(self):
+        
     
     def calculate_cost(self):
         """
