@@ -201,11 +201,14 @@ class Move:
         for name, val in kwargs.items():
             self.__setattr__(name, val)
         
-        self.check_vals()
         self.valid = True
+        self.check_vals()
     
     def check_vals(self):
+        # print('')
+        # print(str(self.move_type))
         for field, t in FIELDS_FROM_MOVE_TYPES[self.move_type]:
+            # print('{}, {}'.format(field, hasattr(self, field)))
             if not hasattr(self, field):
                 self.valid = False
                 return
@@ -280,6 +283,10 @@ class Battlefield:
         for x in range(self.width):
             for y in range(self.height):
                 self.map[x, y] = list()
+    
+    def has_player_won(self):
+        players = [bot.player for bot in self.bots]
+        return len(players) == 1
     
     def at(self, coords):
         return self.map.get(coords, list())
@@ -830,7 +837,8 @@ class GameManager:
             #If the targeted square isn't in range, don't do the move
             if not self.battlefield.is_visible_for(bot, t_coords, s_range=r):
                 continue
-            
+            # print('move.move_type: {}'.format(move.move_type))
+            # print('move.valid: {}'.format(move.valid))
             m_amount = move.amount
             # except Exception as err:
             #     print('exception when processing GIVE_ENERGY move:')
@@ -1118,6 +1126,9 @@ class GameManager:
                 if(num_bots_at >= 2):
                     packed_coords.add(bot.coords)
             
+            #TODO store the old coords for bots instead of calculating them
+            #it seems like the calculation might sometimes go wrong
+            
             packed_coords = list(packed_coords)
             while packed_coords:
                 packed_coord = packed_coords[0]
@@ -1129,16 +1140,17 @@ class GameManager:
                 move_back = moved_bots.copy()
                 #All the bots in this square moved
                 if len(bots_at) == len(moved_bots):
-                    max_speed = max([b.speed for b in moved_bots])
-                    fastest_bots = [b for b in moved_bots if b.speed == max_speed]
-                    
-                    #If one bot is faster than all the others (no ties)
-                    if len(fastest_bots) == 1:
-                        fastest_bot = fastest_bots[0]
+                    if moved_bots:
+                        max_speed = max([b.speed for b in moved_bots])
+                        fastest_bots = [b for b in moved_bots if b.speed == max_speed]
                         
-                        #One bot is faster than all the others
-                        #So only move the slower bots back to their original spaces
-                        move_back = [b for b in moved_bots if b != fastest_bot]
+                        #If one bot is faster than all the others (no ties)
+                        if len(fastest_bots) == 1:
+                            fastest_bot = fastest_bots[0]
+                            
+                            #One bot is faster than all the others
+                            #So only move the slower bots back to their original spaces
+                            move_back = [b for b in moved_bots if b != fastest_bot]
                 
                 for bot in move_back:
                     coords = bot.coords
@@ -1240,6 +1252,10 @@ class GameManager:
         """
         Advance the game by one turn.
         """
+        if self.battlefield.has_player_won():
+            print('game over')
+            return
+        
         # self.ready_effects()
         self.upkeep()
         self.give_bots_info()

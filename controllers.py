@@ -314,8 +314,11 @@ class BasicController:
     def set_directions(self):
         message = self.owner_view.message
         if message:
+            # print('')
             for word in message.split():
-                d = bg.Direction.__dict__.get(message, None)
+                # print(word)
+                d = bg.Direction.__dict__.get(word, None)
+                # print('d: {}'.format(d))
                 if d:
                     self.directions.append(d)
         else:
@@ -349,10 +352,14 @@ class BasicController:
         
         if not self.directions:
             self.set_directions()
-            for d in self.directions:
-                add = str(d).split('.')[1]
-                self.message_to_give = self.message_to_give + ' ' + add
-            # print('self.message_to_give: {}'.format(self.message_to_give))
+            if not self.owner_view.message:
+                for d in self.directions:
+                    add = str(d).split('.')[1]
+                    self.message_to_give = self.message_to_give + ' ' + add
+                # print('self.message_to_give: {}'.format(self.message_to_give))
+            else:
+                self.message_to_give = self.owner_view.message
+                # print('self.message_to_give: {}'.format(self.message_to_give))
     
     #If you're on an energy source, either build or give energy
     #If you're not, either go to an energy source, fight, or search
@@ -423,6 +430,7 @@ class BasicController:
                 
                 give_energy_move = bg.Move(move_type=bg.MoveType.GIVE_ENERGY,
                                            target_coords=give_en_coords)
+                #Add amount later
                 moves[bg.MoveType.GIVE_ENERGY] = [give_energy_move]
             
             return moves
@@ -432,21 +440,10 @@ class BasicController:
             
             #Look for an energy source
             energy_sources = list()
-            # print('self.view: {}'.format(self.view))
-            # print('')
-            # print(type(self.view))
+            
             for _, items in self.view.items():
-            # for _, items in self.view:
-                # print('checking for ES and Bot')
-                # sources_at = [s for s in items if s.type == 'EnergySource']
-                # bots_at = [s for s in items if s.type == 'Bot']
                 if 'EnergySource' in items and not 'Bot' in items:
                     energy_sources.append(items['EnergySource'])
-                # source_at = items.get('EnergySource', None)
-                # has_bot = 'Bot' in items
-                # #Don't go to occupied places
-                # if source_at and not has_bot:
-                #     energy_sources.append(source)
             
             if energy_sources:
                 target_coords = choice(energy_sources).coords
@@ -458,14 +455,8 @@ class BasicController:
                 #Look for an enemy instead
                 enemies = list()
                 for _, items in self.view.items():
-                # for _, items in self.view:
                     if 'Bot' in items and items['Bot'].player != self.player:
                         enemies.append(items['Bot'])
-                    # bots_at = [i for i in items if i.type == 'Bot']
-                    # enemies_at = [b for b in bots_at if b.player != self.player]
-                    
-                    # if enemies_at:
-                    #     enemies.extend(enemies_at)
                 
                 if enemies:
                     target_coords = choice(enemies).coords
