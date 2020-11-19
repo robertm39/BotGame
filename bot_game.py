@@ -1080,7 +1080,6 @@ class GameManager:
             if not self.battlefield.is_in_bounds(t_coords):
                 continue
             
-            
             bots_at = self.battlefield.bots_at(t_coords)
             
             #If the bot would be moving into another bot
@@ -1114,12 +1113,13 @@ class GameManager:
             bots_at = self.battlefield.bots_at(cramped)
             moved_at = [b for b in bots_at if b in moved]
             
-            # to_move_back = list()
+            to_move_back = list()
             
             #If one of the bots in this square didn't move,
             #All the ones that moved need to leave
             if len(moved_at) < len(bots_at):
-                to_move_back = moved_at.copy()
+                # to_move_back = moved_at.copy()
+                to_move_back.extend(moved_at)
             else:
                 #All the bots at this square moved
                 #If one is faster than all the others, only the others leave
@@ -1130,15 +1130,25 @@ class GameManager:
                 
                 if len(fastest_bots) == 1:
                     fastest_bot = fastest_bots[0]
-                    to_move_back = [b for b in moved_at if b != fastest_bot]
+                    to_move_back = list([b for b in moved_at if b != fastest_bot])
+                    # print('{} there,  moving back: {} at {}'.format(len(bots_at), len(to_move_back), cramped))
                 else:
-                    to_move_back = moved_at.copy()
+                    # to_move_back = moved_at.copy()
+                    to_move_back.extend(moved_at)
             
             for bot in to_move_back:
                 old_c = old_coords[bot]
                 self.battlefield.set_coords(bot, old_c)
+                moved.remove(bot) #Now this bot hasn't moved
                 if len(self.battlefield.bots_at(old_c)) > 1:
                     cramped_coords.append(old_c)
+    
+    def test_none_cramped(self):
+        for coords in self.battlefield.map:
+            bots_at = self.battlefield.bots_at(coords)
+            if len(bots_at) > 1:
+                print('{} cramped with {} bots'.format(coords, len(bots_at)))
+                raise AssertionError()
     
     #I think this isn't working
     #I'll need to fix it
@@ -1171,6 +1181,7 @@ class GameManager:
                                                                 i)
             
             self.undo_failed_moves(old_coords, cramped, moved)
+            self.test_none_cramped()
             
             moving_bots = [b for b in moving_bots if b in had_orders]
             
