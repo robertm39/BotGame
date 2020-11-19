@@ -351,6 +351,7 @@ class BasicController:
         es_at = [i for i in items_at if i.type == 'EnergySource']
         is_es_at = len(es_at) > 0
         
+        moves = dict()
         if is_es_at:
             #Either build or give energy
             adj = bg.coords_within_distance(coords,
@@ -359,7 +360,6 @@ class BasicController:
             adj_wo_bot = [c for c in adj if not 'Bot' in self.view[c]]
             print('adj_wo_bot: {}'.format(adj_wo_bot))
             
-            moves = dict()
             
             #Build in one of the empty spots
             if adj_wo_bot:
@@ -376,7 +376,7 @@ class BasicController:
                                               message=self.owner_view.message)
                 
                 moves[bg.MoveType.BUILD] = [build_move]
-                return moves
+                # return moves
             
             #There's a bot in one of the empty spots
             adj_w_bot = [c for c in adj if not c in adj_wo_bot]
@@ -385,5 +385,7 @@ class BasicController:
             
             if adj_w_ally:
                 ally_c = choice(adj_w_ally)
+                give_en_coords = ally_c.coords
                 
+                give_energy_move
         

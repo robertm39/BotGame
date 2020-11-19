@@ -534,19 +534,6 @@ def main():
     # stealth_test_1(battlefield)
     setups_test_1(battlefield)
     
-    #Setup scrollbar
-    # right_scrollbar = tk.Scrollbar(root)
-    # right_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    
-    # bottom_scrollbar = tk.Scrollbar(root)
-    # bottom_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
-    
-    # panel = tk.Frame(root)
-    # panel.pack(side=tk.LEFT, fill=tk.BOTH)
-    
-    # right_scrollbar.config(command=panel.yview)
-    # bottom_scrollbar.config(command=panel.xview)
-    
     frame = BotGameDisplayFrame(root,
                                 game_manager,
                                 view_width=700,

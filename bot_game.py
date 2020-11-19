@@ -167,19 +167,59 @@ OPPOSITE = {Direction.LEFT:Direction.RIGHT,
             Direction.UP:Direction.DOWN,
             Direction.DOWN:Direction.UP}
 
+FIELDS_FROM_MOVE_TYPES = {MoveType.GIVE_ENERGY:(('target_coords', 'coords'),
+                                                ('amount', int)),
+                          MoveType.GIVE_LIFE:(('target_coords', 'coords'),
+                                              ('amount', int)),
+                          MoveType.HEAL:tuple([('amount', int)]),
+                          MoveType.ATTACK:tuple([('target_coords', 'coords')]),
+                          MoveType.MOVE:tuple([('direction', Direction)]),
+                          MoveType.BUILD:tuple([('target_coords', 'coords')])}
+
+def check_field_type(field, t):
+    if t == 'coords':
+        if not isinstance(field, tuple):
+            return False
+        
+        if len(field) != 2:
+            return False
+        
+        if not isinstance(field[0], int):
+            return False
+        
+        if not isinstance(field[1], int):
+            return False
+        
+        return True
+    
+    return isinstance(field, t)
+
 class Move:
     def __init__(self, move_type, **kwargs):
         self.move_type = move_type
         
         for name, val in kwargs.items():
             self.__setattr__(name, val)
+        
+        self.check_vals()
+        self.valid = True
+    
+    def check_vals(self):
+        for field, t in FIELDS_FROM_MOVE_TYPES[self.move_type].items():
+            if not hasattr(self, field):
+                self.valid = False
+                return
+            
+            if not check_field_type(getattr(self, field), t):
+                self.valid = False
+                return
 
 #GIVE ENERGY:
-#    direction: Direction
+#    target_coords: (int, int)
 #    amount: int
 
 #GIVE LIFE:
-#    direction: Direction
+#    target_coords: (int, int)
 #    amount: int
 
 #HEAL
@@ -192,7 +232,7 @@ class Move:
 #    direction: Direction
 
 #BUILD:
-#direction and other stuff
+#target_coords and other stuff
 
 def coords_in_direction(coords, direction):
     x, y = coords
@@ -376,7 +416,7 @@ class Battlefield:
         
         return result
     
-    def is_visible_for(self, bot, t_coords):
+    def is_visible_for(self, bot, t_coords, s_range=None, curved=None):
         """
         Return whether the given coords are visible for the given bot.
         
@@ -388,7 +428,9 @@ class Battlefield:
             bool: Whether the given coords are visible for the given bot.
         """
         #This can be optimized, but it doesn't need to be
-        return t_coords in self.get_visible_coords(bot)
+        return t_coords in self.get_visible_coords(bot,
+                                                   s_range=s_range,
+                                                   curved=curved)
     
     def set_coords(self, item, coords):
         """
@@ -631,7 +673,9 @@ class GameManager:
         
         for bot, moves in all_moves.items():
             for move_type in moves:
-                result[move_type][bot] = moves[move_type]
+                moves_of_type = moves[move_type]
+                valid_moves = [m for m in moves_of_type if m.valid]
+                result[move_type][bot] = valid_moves
         
         return result
     
@@ -749,6 +793,9 @@ class GameManager:
         self.newturns()
         self.resolve_effects()
     
+    # def is_in_range(self, coords, bot, r):
+    #     return self.b
+    
     def process_give_energys(self, moves_from_bots):
         """
         Process the GIVE_ENERGY moves.
@@ -768,15 +815,22 @@ class GameManager:
             
             move = moves[0]
             
-            try:
-                m_dir = move.direction
-                m_amount = move.amount
-            except Exception as err:
-                print('exception when processing GIVE_ENERGY move:')
-                print(err)
+            # try:
+                # m_dir = move.direction
+            t_coords = move.target_coords
+            r = bot.give_energy_range if hasattr(bot, 'give_energy_range') else 1
+            
+            #If the targeted square isn't in range, don't do the move
+            if not self.battlefield.is_visible_for(bot, t_coords, s_range=r):
                 continue
             
-            t_coords = coords_in_direction(bot.coords, m_dir)
+            m_amount = move.amount
+            # except Exception as err:
+            #     print('exception when processing GIVE_ENERGY move:')
+            #     print(err)
+            #     continue
+            
+            # t_coords = coords_in_direction(bot.coords, m_dir)
             
             items_at = self.battlefield.at(t_coords)
             targeted_bots = [b for b in items_at if isinstance(b, Bot)]
@@ -849,14 +903,31 @@ class GameManager:
                 continue
             
             move = moves[0]
-            t_coords = coords_in_direction(bot.coords, move.direction)
+            
+            # try:
+                # m_dir = move.direction
+            t_coords = move.target_coords
+            
+            r = bot.give_life_range if hasattr(bot, 'give_life_range') else 1
+            
+            #If the targeted square isn't in range, don't do the move
+            if not self.battlefield.is_in_range(bot, t_coords, s_range=r):
+                continue
+            
+            amount = move.amount
+            # except Exception as err:
+            #     print('exception when processing GIVE_LIFE move:')
+            #     print(err)
+            #     continue
+            
+            # t_coords = coords_in_direction(bot.coords, move.direction)
             targeted_bots = self.battlefield.bots_at(t_coords)
             
             if not targeted_bots:
                 continue
             
             targeted_bot = targeted_bots[0]
-            amount = move.amount
+            # amount = move.amount
             
             #You can only heal by as much energy as you have
             amount = min(amount, bot.energy)
@@ -1094,6 +1165,10 @@ class GameManager:
             
             move = moves[0]
             t_coords = move.coords
+            r = bot.build_range if hasattr(bot, 'build_range') else 1
+            if not self.battlefield.is_visible_for(bot, t_coords, s_range=r):
+                continue
+            
             # t_coords = coords_in_direction(bot.coords, move.direction)
             
             if self.battlefield.bots_at(t_coords):
