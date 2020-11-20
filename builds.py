@@ -368,7 +368,7 @@ class BuildMove(bg.Move):
         for name, val in special_stats.items():
             self.__setattr__(name, val)
             stat_class = STATS_FROM_NAMES[name]
-            stat = stat_class(val)
+            stat = stat_class(val, self)
             self.special_stats.append(stat)
         
         self.calculate_cost()

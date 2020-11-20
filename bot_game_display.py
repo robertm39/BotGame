@@ -528,7 +528,7 @@ def stealth_test_1(battlefield):
     battlefield.add_bot(fight_bot)
 
 def setups_test_1(battlefield):
-    setups.make_random_energy_sources(battlefield, num=5, border=1)
+    setups.make_random_energy_sources(battlefield, num=15, border=3)
     
     es_1, es_2 = setups.get_start_energy_sources(10, battlefield)
     battlefield.add_item(es_1)
@@ -547,7 +547,7 @@ def main():
     
     #Full size is 64x64
     #But I want to see the whole thing for testing
-    battlefield = bot_game.Battlefield(16, 16)
+    battlefield = bot_game.Battlefield(32, 32)
     
     game_manager = bot_game.GameManager(battlefield)
     

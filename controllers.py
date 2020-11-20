@@ -473,12 +473,27 @@ class BasicController:
         return moves
 
 #A controller that should be a bit better than the first basic controller
-#Changes todo:
-#
-#1. Bots on an energy source will try to move to a better one DONE
-#2. Not all bots will be made with the same speed DONE
-#3. Bots will preferentially build onto energy sources
-#4. Some bots will be fighter bots that will target enemies over energy sources
+#Changes:
+#Bots on an energy source will try to move to a better one
+#Not all bots will be made with the same speed 
+#Some bots have absorb
+
+#Todo:
+#Bots will preferentially build onto energy sources
+#Some bots will be fighter bots that will target enemies over energy sources
+
+class RandomStatGetter:
+    def __init__(self, period, func):
+        self.period = period
+        self.func = func
+        self.val = self.func()
+        self.i = 0
+    
+    def update(self):
+        self.i += 1
+        if self.i >= self.period:
+            self.i = 0
+            self.val = self.func()
 
 class BasicController2:
     def __init__(self):
@@ -487,8 +502,8 @@ class BasicController2:
         self.directions = list()
         self.message_to_give = ''
         
-        self.next_speed = randint(0, 4)
-        self.counter = 0
+        self.next_speed = RandomStatGetter(10, lambda : randint(1, 5))
+        self.next_absorb = RandomStatGetter(10, lambda : randint(0, 5))
     
     def set_directions(self):
         message = self.owner_view.message
@@ -537,11 +552,8 @@ class BasicController2:
     #If you're on an energy source, either build or give energy
     #If you're not, either go to an energy source, fight, or search
     def update(self):
-        self.counter += 1
-        
-        if self.counter >= 10:
-            self.counter = 0
-            self.next_speed = randint(0, 4)
+        self.next_speed.update()
+        self.next_absorb.update()
     
     def get_moves(self):
         self.update()
@@ -610,14 +622,16 @@ class BasicController2:
                 build_coords = choice(adj_wo_bot)
                 
                 build_move = builds.BuildMove(build_coords,
-                                              max_hp=10,
-                                              power=10,
+                                              max_hp=1,
+                                              power=1,
                                               attack_range=1,
-                                              speed=self.next_speed,
-                                              sight=10,
+                                              speed=self.next_speed.val,
+                                              sight=1,
                                               energy=0,
                                               movement=1,
-                                              message=self.message_to_give)
+                                              message=self.message_to_give,
+                                              absorb=15)
+                                              #absorb=self.next_absorb.val)
                 
                 moves[bg.MoveType.BUILD] = [build_move]
             
