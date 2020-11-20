@@ -23,12 +23,14 @@ def get_base_cost(max_hp, power, attack_range, speed, sight, movement):
     sight_mult = 0.2 if sight == 0 else 0.5 + sight/2.0
     movement_mult = 0.5 + movement/2.0
     
-    #I'll use round instead
-    #to guard against floating point errors
-    result = round(base * range_mult * sight_mult * movement_mult)
+    #Don't round now
+    #round later
+    # result = round(base * range_mult * sight_mult * movement_mult)
+    result = base * range_mult * sight_mult * movement_mult
     
-    #Every unit must cost at least one energy
-    return max(1, result)
+    # return max(1, result)
+    #Make it cost at least one later
+    return result
 
 class Code:
     def __init__(self, sources, targets, events):
@@ -320,6 +322,9 @@ STATS_FROM_NAMES['stealth'] = StealthStat
 #Stealth
 
 #Unimplemented special stats:
+#Poison: damage from this bot lowers enemies' max HP instead of damaging them
+#Debiliation (?): damage from this bot lowers enemies' power instead of damaging them
+    
 #Fragile - dies after first attack or damage
 #Bomb - attacks own square after dieing
 #Extra Attacks X
@@ -331,7 +336,7 @@ STATS_FROM_NAMES['stealth'] = StealthStat
 #Extra Build Range X
 
 #Flamethrower X
-#Immune #isn't hurt when it would damage itself
+#Immune #isn't hurt when it would damage itself (probably not)
 
 class BuildMove(bg.Move):
     def __init__(self,
@@ -373,6 +378,8 @@ class BuildMove(bg.Move):
         
         self.calculate_cost()
         #Now self.cost is initialized
+        # if self.cost > 200:
+            # print('cost: {}'.format(self.cost))
     
     # def check_vals(self):
         
@@ -389,9 +396,13 @@ class BuildMove(bg.Move):
                                   self.sight,
                                   self.movement)
         
+        # print('base cost: {}'.format(base_cost))
+        
         multiplier = 1.0
         for stat in self.special_stats:
             multiplier *= stat.multiplier()
+        # print('mutliplier: {}'.format(multiplier))
         
-        self.cost = base_cost * multiplier
+        #Every units must cost at least one
+        self.cost = round(max(1, base_cost * multiplier))
             

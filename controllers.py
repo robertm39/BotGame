@@ -503,7 +503,6 @@ class BasicController2:
         self.message_to_give = ''
         
         self.next_speed = RandomStatGetter(10, lambda : randint(1, 5))
-        self.next_absorb = RandomStatGetter(10, lambda : randint(0, 5))
     
     def set_directions(self):
         message = self.owner_view.message
@@ -553,7 +552,6 @@ class BasicController2:
     #If you're not, either go to an energy source, fight, or search
     def update(self):
         self.next_speed.update()
-        self.next_absorb.update()
     
     def get_moves(self):
         self.update()
@@ -625,13 +623,14 @@ class BasicController2:
                                               max_hp=1,
                                               power=1,
                                               attack_range=1,
-                                              speed=self.next_speed.val,
+                                              speed=0,#self.next_speed.val,
                                               sight=1,
                                               energy=0,
                                               movement=1,
                                               message=self.message_to_give,
+                                              #spread=70,
                                               absorb=15)
-                                              #absorb=self.next_absorb.val)
+                                              #absorb=40)
                 
                 moves[bg.MoveType.BUILD] = [build_move]
             
@@ -692,3 +691,104 @@ class BasicController2:
                     moves[bg.MoveType.MOVE] = [move]
         
         return moves
+
+#Make one bot with very high spread
+class MegaBombController:
+    def __init__(self):
+        self.view = None
+        self.owner_view = None
+        self.directions = list()
+        self.message_to_give = ''
+    
+    def set_directions(self):
+        message = self.owner_view.message
+        if message:
+            for word in message.split():
+                d = bg.Direction.__dict__.get(word, None)
+                if d:
+                    self.directions.append(d)
+        else:
+            #Should be the first bot
+            x, y = self.owner_view.coords
+            if x == 0:
+                if y == 0:
+                    #Upper-left
+                    self.directions = [bg.Direction.DOWN, bg.Direction.RIGHT]
+                else:
+                    #Lower-left
+                    self.directions = [bg.Direction.UP, bg.Direction.RIGHT]
+            else:
+                if y == 0:
+                    #Upper-right
+                    self.directions = [bg.Direction.DOWN, bg.Direction.LEFT]
+                else:
+                    #Lower-right
+                    self.directions = [bg.Direction.UP, bg.Direction.LEFT]
+                    
+    
+    def give_view(self, view, owner_view):
+        self.view = view
+        self.owner_view = owner_view
+        self.coords = self.owner_view.coords
+        self.player = self.owner_view.player
+        
+        if not self.directions:
+            self.set_directions()
+            if not self.owner_view.message:
+                for d in self.directions:
+                    add = str(d).split('.')[1]
+                    self.message_to_give = self.message_to_give + ' ' + add
+            else:
+                self.message_to_give = self.owner_view.message
+    
+    def get_moves(self):
+        
+        coords = self.owner_view.coords
+        # items_at = self.view[coords]
+        
+        # is_es_at = 'EnergySource' in items_at
+        is_first = self.owner_view.sight == 1
+        
+        #Get all this info up front
+        adj = bg.coords_within_distance(coords,
+                                        1,
+                                        include_center=False)
+        
+        moves = dict()
+        
+        if is_first:
+            build_coords = choice(adj)
+            
+            #Always build
+            build_move = builds.BuildMove(build_coords,
+                                          max_hp=1,
+                                          power=1,
+                                          attack_range=0,
+                                          speed=0,#self.next_speed.val,
+                                          sight=0,
+                                          energy=0,
+                                          movement=0,
+                                          message=self.message_to_give,
+                                          spread=64,
+                                          absorb=3)
+                                          #absorb=40)
+            
+            moves[bg.MoveType.BUILD] = [build_move]
+            
+            return moves
+        else:
+            #Always attack 
+            # attack_coords = choice(adj)
+            attack_coords = self.owner_view.coords
+            
+            attack_move = bg.Move(move_type=bg.MoveType.ATTACK,
+                                  target_coords=attack_coords)
+            
+            moves[bg.MoveType.ATTACK] = [attack_move]
+            
+            #go the to center
+            t_coords = (32, 32)
+            movement = get_approach_moves(self.owner_view.coords, t_coords)
+            moves[bg.MoveType.MOVE] = movement
+        
+            return moves

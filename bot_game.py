@@ -1068,7 +1068,12 @@ class GameManager:
         cramped = set()
         
         for bot, moves in moves_from_bots.items():
+            #The bot has no more move orders left
             if not len(moves) > i:
+                continue
+            
+            #The bot has no more movement left
+            if not bot.movement > i:
                 continue
             
             had_orders.append(bot)
@@ -1426,6 +1431,37 @@ OVERRIDABLE = ('increase_hp',
                'view',
                'give_view',
                'get_moves')
+
+BASE_STATS = ('max_hp',
+              'power',
+              'attack_range',
+              'speed',
+              'sight',
+              'movement')
+
+class ModManager:
+    def __init__(self):
+        self.mods = dict()
+        
+    def add_mod(self, stat, amount, source):
+        if not stat in self.mods:
+            self.mods[stat] = dict()
+        
+        for_stat = self.mods[stat]
+        if not source in for_stat:
+            for_stat[source] = amount
+        else:
+            for_stat[source] += amount
+    
+    def remove_source(self, source):
+        for stat in self.mods:
+            for_stat = self.mods[stat]
+            if source in for_stat:
+                del[for_stat][source]
+    
+    def __getitem__(self, stat):
+        return sum([m for s, m in self.mods.get(stat, {}).items()])
+    
 class Bot:
     def __init__(self,
                  coords,
@@ -1459,6 +1495,10 @@ class Bot:
         
         self.special_stats_dict = special_stats_dict.copy()
         self.special_stats = list()
+        
+        #Modifiers to stats
+        #effects use these instead of directly changing them
+        self.modifiers = ModDict()
         
         self.codes = list()
         
@@ -1495,6 +1535,14 @@ class Bot:
         
         return super().__getattribute__(name)
     
+    def get_stat(self, name):
+        mod = self.modifiers.get(name, 0)
+        return getattr(self, name) + mod
+    
+    def new_turn(self, game_manager):
+        for stat in self.special_stats:
+            stat.new_turn(game_manager)
+    
     def _increase_hp(self, amount):
         """
         Increase the bot.hp by the nonnegative amount given.
@@ -1512,10 +1560,6 @@ class Bot:
         increase = min(self.hp + amount, self.max_hp) - self.hp
         self.hp += increase
         return increase
-    
-    def new_turn(self, game_manager):
-        for stat in self.special_stats:
-            stat.new_turn(game_manager)
     
     #This pattern allows special stats to access the default methods
     #The core methods start with _, so they can't be overridden
