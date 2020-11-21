@@ -66,7 +66,10 @@ class Code:
         pass
 
 class ReplacementCode(Code):
-    pass
+    def __init__(self, sources, targets, events, priority=0):
+        super().__init__(sources, targets, events)
+        
+        self.priority = priority
 
 class SpecialStat:
     def new_turn(self, game_manager):
@@ -91,7 +94,7 @@ class AbsorbStat(SpecialStat):
 
 class AbsorbReplacementCode(ReplacementCode):
     def __init__(self, value, bot):
-        super().__init__([], [bot], [effects.DamageEffect])
+        super().__init__([], [bot], [effects.DamageEffect], 1)
         self.value = value
         self.bot = bot
         
@@ -157,10 +160,9 @@ class Burn:
         self.power = power
         self.replacement_codes = replacement_codes
 
-#TODO make it so burn always comes after spread
 class BurnReplacementCode(ReplacementCode):
     def __init__(self, value, bot):
-        super().__init__([bot], [], [effects.AttackEffect])
+        super().__init__([bot], [], [effects.AttackEffect], priority=1)
         self.value = value
         self.bot = bot
         
@@ -310,6 +312,37 @@ class StealthStat(SpecialStat):
         return 2.0
 STATS_FROM_NAMES['stealth'] = StealthStat
 
+class PoisonStat(SpecialStat):
+    def __init__(self, value, bot):
+        self.value = 1
+        self.bot = bot
+        self.code = PoisonReplacementCode(self.bot)
+    
+    def get_codes(self):
+        return [self.code]
+    
+    def multiplier(self):
+        return 2.0
+
+class PoisonReplacementCode(ReplacementCode):
+    def __init__(self, bot):
+        super().__init__([bot], [], [effects.DamageEffect])
+        
+        self.bot = bot
+    
+    #Default fits() behavior works
+    
+    def trigger(self, game_manager, effect):
+        hurt_bot = effect.target
+        hurt_bot.mod_manager.add_mod('max_hp', -effect.damage, self)
+        
+        #Check if it's dead
+        #maybe move all these to GameManager
+        if hurt_bot.is_dead():
+            game_manager.battlefield.remove_bot(hurt_bot, should_have=False)
+#make a modifier effect
+STATS_FROM_NAMES['poison'] = PoisonStat
+
 #Implemented special stats:
 #Absorb X
 #Spread X
@@ -371,10 +404,12 @@ class BuildMove(bg.Move):
         self.valid = 'NA'
         
         for name, val in special_stats.items():
-            self.__setattr__(name, val)
-            stat_class = STATS_FROM_NAMES[name]
-            stat = stat_class(val, self)
-            self.special_stats.append(stat)
+            #Ignore all zero stats
+            if val != 0:
+                self.__setattr__(name, val)
+                stat_class = STATS_FROM_NAMES[name]
+                stat = stat_class(val, self)
+                self.special_stats.append(stat)
         
         self.calculate_cost()
         #Now self.cost is initialized

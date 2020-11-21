@@ -375,18 +375,24 @@ class BasicController:
         adj_w_bot = [c for c in adj if not c in adj_wo_bot]
         adj_w_ally = [c for c in adj_w_bot if\
                       self.view[c]['Bot'].player == self.owner_view.player]
-        adj_w_enemy = [b for b in adj_w_bot if not b in adj_w_ally]
+        # adj_w_enemy = [b for b in adj_w_bot if not b in adj_w_ally]
         
         moves = dict()
         
         #Always attack if there's an enemy adjacent
-        if adj_w_enemy:
-                attack_coords = choice(adj_w_enemy)
-                
-                attack_move = bg.Move(move_type=bg.MoveType.ATTACK,
-                                      target_coords=attack_coords)
-                
-                moves[bg.MoveType.ATTACK] = [attack_move]
+        attack_range = 3
+        in_range = bg.coords_at_distance(coords, attack_range)
+        in_range = [c for c in in_range if c in self.view]
+        in_range_w_bot = [c for c in in_range if 'Bot' in self.view[c]]
+        in_range_w_enemy = [c for c in in_range_w_bot if\
+                            self.view[c]['Bot'].player != self.owner_view.player]
+        if in_range_w_enemy:
+            attack_coords = choice(in_range_w_enemy)
+            
+            attack_move = bg.Move(move_type=bg.MoveType.ATTACK,
+                                  target_coords=attack_coords)
+            
+            moves[bg.MoveType.ATTACK] = [attack_move]
                 
         if is_es_at:
             #Either build or give energy
@@ -403,14 +409,17 @@ class BasicController:
                 build_coords = choice(adj_wo_bot)
                 
                 build_move = builds.BuildMove(build_coords,
-                                              max_hp=10,
-                                              power=10,
-                                              attack_range=1,
+                                              max_hp=3,
+                                              power=2,
+                                              attack_range=attack_range,
                                               speed=0,
-                                              sight=10,
+                                              sight=4,
                                               energy=0,
                                               movement=1,
-                                              message=self.message_to_give)
+                                              message=self.message_to_give,
+                                              poison=1,
+                                              spread=2,
+                                              absorb=4) #Testing poison
                 
                 moves[bg.MoveType.BUILD] = [build_move]
             

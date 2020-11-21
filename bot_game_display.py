@@ -528,7 +528,7 @@ def stealth_test_1(battlefield):
     battlefield.add_bot(fight_bot)
 
 def setups_test_1(battlefield):
-    setups.make_random_energy_sources(battlefield, num=10, border=3)
+    setups.make_random_energy_sources(battlefield, num=3, border=3)
     
     es_1, es_2 = setups.get_start_energy_sources(10, battlefield)
     battlefield.add_item(es_1)
@@ -537,8 +537,8 @@ def setups_test_1(battlefield):
     con_1 = controllers.BasicController2()
     # con_1 = controllers.MegaBombController()
     
-    # con_2 = controllers.BasicController()
-    con_2 = controllers.BasicController2()
+    con_2 = controllers.BasicController()
+    # con_2 = controllers.BasicController2()
     
     bot_1, bot_2 = setups.get_start_bots(con_1, con_2, battlefield)
     battlefield.add_item(bot_1)
@@ -550,7 +550,7 @@ def main():
     
     #Full size is 64x64
     #But I want to see the whole thing for testing
-    battlefield = bot_game.Battlefield(32, 32)
+    battlefield = bot_game.Battlefield(16, 16)
     
     game_manager = bot_game.GameManager(battlefield)
     
@@ -572,7 +572,7 @@ def main():
                                 view_height=700,
                                 square_size=20,
                                 font_size=8,
-                                frame_delay=1)
+                                frame_delay=100)
     tk.app = frame
     
     frame.start_loop()

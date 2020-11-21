@@ -364,7 +364,8 @@ class Battlefield:
         self.map[bot.coords].remove(bot)
         self.bots_from_speeds[bot.speed].remove(bot)
     
-    #TODO invisible bots shouldn't block vision even if they're Tall
+    #invisible bots shouldn't block vision even if they're Tall
+    #this is maybe implemented right
     def get_visible_coords(self,
                            bot=None,
                            c_coords=None,
@@ -413,11 +414,18 @@ class Battlefield:
                         continue
                     
                     bot_at = bots_at[0]
+                    
                     #If the bot is tall, the square can't be seen past
                     #But it can be seen into
                     if hasattr(bot_at, 'tall'):
-                        result.append(t_coords)
-                        continue
+                        #If the bot would be invisible,
+                        #it can still be seen through
+                        
+                        #If a bot isn't provided,
+                        #we assume bot_at is visible
+                        if (not bot) or bot_at.view(bot):
+                            result.append(t_coords)
+                            continue
                     new_coords.add(t_coords)
             
             result.extend(new_coords)
@@ -719,20 +727,31 @@ class GameManager:
             bool: Whether any replacement codes were triggered.
         """
         spec = (effect.source, effect.target, type(effect))
-        # print('spec: {}'.format(spec))
         replacements = self.replacement_codes[spec]
-        # if len(replacements) > 0:
-            # print('len(replacements): {}'.format(len(replacements)))
+        
+        fitting_replacements = [r for r in replacements if r.fits(effect)]
+        
+        possible_replacements = [r for r in fitting_replacements\
+                                 if not r in effect.replacement_codes]
+        
+        if not possible_replacements:
+            return False
             
-        for replacement in replacements:
-            if replacement.fits(effect):
-                #An effect can only be replaced once
-                #by each replacement code
-                # print('replacement_codes: {}'.format(effect.replacement_codes))
-                if not replacement in effect.replacement_codes:
-                    replacement.trigger(self, effect)
-                    return True
-        return False
+        possible_replacements.sort(key=lambda x: x.priority)
+        
+        replacement = possible_replacements[0]
+        replacement.trigger(self, effect)
+        return True
+        
+        # for replacement in replacements:
+        #     if replacement.fits(effect):
+        #         #An effect can only be replaced once
+        #         #by each replacement code
+        #         # print('replacement_codes: {}'.format(effect.replacement_codes))
+        #         if not replacement in effect.replacement_codes:
+        #             replacement.trigger(self, effect)
+        #             return True
+        # return False
     
     def check_triggered_codes(self, effect):
         """
@@ -977,7 +996,7 @@ class GameManager:
             
             #You can only heal by how much energy you have,
             #and also only by how much damage you have
-            amount = min(amount, bot.energy, bot.max_hp - bot.hp)
+            amount = min(amount, bot.energy, bot.get_stat('max_hp') - bot.hp)
             bot.increase_hp(amount)
             bot.energy -= amount
         
@@ -1339,24 +1358,16 @@ class GameManager:
                 if not self.battlefield.is_visible_for(bot, t_coords, s_range=r):
                     continue
                 
-                # t_coords = coords_in_direction(bot.coords, move.direction)
-                
                 if self.battlefield.bots_at(t_coords):
                     #Can't build a bot where there already is a bot
                     continue
                 
-                # try:
                 if move.cost > bot.energy:
                     #The bot cannot afford the build, so it doesn't happen
                     continue
-                # except Exception as err:
-                #     print('Exception when processing BUILD move:')
-                #     print(err)
-                #     continue
                 
                 #Make a new controller of the same type
-                #real controllers will need inits that only take message
-                #as an argument
+                #real controllers will have inits that don't take arguments
                 controller = type(bot.controller)()
             
                 new_bot = Bot(t_coords,
@@ -1371,7 +1382,6 @@ class GameManager:
                               bot.player,
                               move.message,
                               controller,
-                              # move.special_stats,
                               **move.special_stats_dict)
                 
                 self.battlefield.add_bot(new_bot)
@@ -1439,27 +1449,65 @@ BASE_STATS = ('max_hp',
               'sight',
               'movement')
 
-class ModManager:
-    def __init__(self):
+class ModifierManager:
+    """
+    Keeps track of modifiers to base stats.
+    
+    For each base stat, there can be any modifier-sources, each with one
+    modifier amount associated with it. The modifier for a base stat is the
+    sum of all the modifier amounts for all the modifier-sources.
+    """
+    def __init__(self, parent_bot):
+        self.parent_bot = parent_bot
         self.mods = dict()
         
     def add_mod(self, stat, amount, source):
+        """
+        Add a modifier.
+        
+        Parameters:
+            stat str: The stat to add a modifier for. Must be in BASE_STATS.
+            amount int: The modifier amount to add.
+            source obj: The source of the modifier. Can be any object.
+        """
+        if not stat in BASE_STATS:
+            raise ValueError('stat not in BASE_STATS: {}'.format(stat))
+        
         if not stat in self.mods:
             self.mods[stat] = dict()
+        
         
         for_stat = self.mods[stat]
         if not source in for_stat:
             for_stat[source] = amount
         else:
             for_stat[source] += amount
+        
+        self.parent_bot.notify_mod_added(stat, amount)
     
     def remove_source(self, source):
+        """
+        Remove all modifiers with the given source.
+        
+        Parameters:
+            source obj: The source to remove all modifiers for.
+        """
         for stat in self.mods:
             for_stat = self.mods[stat]
             if source in for_stat:
                 del[for_stat][source]
     
     def __getitem__(self, stat):
+        """
+        Get the total modifier for the given stat.
+        
+        Parameters:
+            stat str: The stat to get the modifier for. Does not have to be in
+                      self.mods. If stat isn't in self.mods, return 0.
+        
+        Return:
+            int: The total modifier for the given stat.
+        """
         return sum([m for s, m in self.mods.get(stat, {}).items()])
     
 class Bot:
@@ -1498,7 +1546,7 @@ class Bot:
         
         #Modifiers to stats
         #effects use these instead of directly changing them
-        self.modifiers = ModDict()
+        self.mod_manager = ModifierManager(self)
         
         self.codes = list()
         
@@ -1535,9 +1583,13 @@ class Bot:
         
         return super().__getattribute__(name)
     
-    def get_stat(self, name):
-        mod = self.modifiers.get(name, 0)
-        return getattr(self, name) + mod
+    def get_stat(self, stat):
+        mod = self.mod_manager[stat]
+        return getattr(self, stat) + mod
+    
+    def notify_mod_added(self, stat, amount):
+        if stat == 'max_hp':
+            self.hp = min(self.hp, self.get_stat('max_hp'))
     
     def new_turn(self, game_manager):
         for stat in self.special_stats:
@@ -1546,7 +1598,7 @@ class Bot:
     def _increase_hp(self, amount):
         """
         Increase the bot.hp by the nonnegative amount given.
-        The bot.hp will remain <= bot.max_hp.
+        The bot.hp will remain <= bot.get_stat('max_hp').
         
         Parameters:
             amount int: The amount to increase hp by. Must be nonnegative.
@@ -1557,7 +1609,9 @@ class Bot:
         if amount < 0:
             raise ValueError('amount: {}'.format(amount))
         
-        increase = min(self.hp + amount, self.max_hp) - self.hp
+        max_hp = self.get_stat('max_hp')
+        
+        increase = min(self.hp + amount, max_hp) - self.hp
         self.hp += increase
         return increase
     
@@ -1591,7 +1645,7 @@ class Bot:
     def _change_hp(self, amount):
         """
         Change the bot's hp by the given amount.
-        It will remain that 0 <= bot.hp <= bot.max_hp
+        It will remain that 0 <= bot.hp <= bot.get_stat(max_hp)
         
         Parameters:
             amount int: The amount to change hp by.
@@ -1599,8 +1653,10 @@ class Bot:
         Return:
             int: The amount that bot.hp actually changed by.
         """
+        max_hp = self.get_stat('max_hp')
+        
         result = self.hp + amount
-        result = max(0, min(self.max_hp, result))
+        result = max(0, min(max_hp, result))
         change = result - self.hp
         self.hp = result
         
@@ -1647,14 +1703,14 @@ class Bot:
             BotView: The view of the bot that will be given to controllers.
         """
         result = BotView(coords=self.coords,
-                         max_hp=self.max_hp,
+                         max_hp=self.get_stat('max_hp'),
                          hp=self.hp,
-                         power=self.power,
-                         attack_range=self.attack_range,
-                         speed=self.speed,
-                         sight=self.sight,
+                         power=self.get_stat('power'),
+                         attack_range=self.get_stat('attack_range'),
+                         speed=self.get_stat('speed'),
+                         sight=self.get_stat('sight'),
                          energy=self.energy,
-                         movement=self.movement,
+                         movement=self.get_stat('movement'),
                          player=self.player,
                          message=self.message,
                          **self.special_stats_dict)
@@ -1690,13 +1746,20 @@ class Bot:
         return self._get_moves()
     
     def __str__(self):
+        max_hp = self.get_stat('max_hp')
+        attack_range = self.get_stat('attack_range')
+        power = self.get_stat('power')
+        speed = self.get_stat('speed')
+        sight = self.get_stat('sight')
+        movement = self.get_stat('movement')
+        
         return 'Bot at ({}, {}),\n'.format(self.coords[0], self.coords[1]) + \
-               'hp={}, max_hp={},\n'.format(self.max_hp, self.hp) + \
-               'power={}, attack_range={},\n'.format(self.power, self.attack_range) + \
-               'speed={},\n'.format(self.speed) + \
-               'sight={},\n'.format(self.sight) + \
+               'hp={}, max_hp={},\n'.format(max_hp, self.hp) + \
+               'power={}, attack_range={},\n'.format(power, attack_range) + \
+               'speed={},\n'.format(speed) + \
+               'sight={},\n'.format(sight) + \
                'energy={},\n'.format(self.energy) + \
-               'movement={},\n'.format(self.movement) + \
+               'movement={},\n'.format(movement) + \
                'player={},\n'.format(self.player) + \
                'message={}'.format(self.message)
 
