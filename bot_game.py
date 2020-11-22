@@ -677,7 +677,6 @@ class GameManager:
         Return:
             moves {MoveType: {Bot: [Move]}}
         """
-        # all_moves = {bot:bot.get_moves() for bot in self.battlefield.bots}
         all_moves = dict()
         for bot in self.battlefield.bots:
             # try:
