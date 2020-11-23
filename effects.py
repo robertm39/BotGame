@@ -23,6 +23,12 @@ class Effect(Event):
         
 #Every effect has a list of sources
 #and one target
+class DieEffect(Effect):
+    def __init__(self, source, target, replacement_codes=tuple([])):
+        super().__init__(source, target, replacement_codes)
+    
+    def resolve(self, game_manager):
+        game_manager.battlefield.remove_bot(self.target, should_have=False)
 
 class DamageEffect(Effect):
     def __init__(self, source, target, damage, replacement_codes=tuple([])):
@@ -31,8 +37,14 @@ class DamageEffect(Effect):
     
     def resolve(self, game_manager):
         self.target.take_damage(self.damage)
+        
+        #Use the DieEffect now
         if self.target.is_dead():
-            game_manager.battlefield.remove_bot(self.target, should_have=False)
+            effect = DieEffect(self.source,
+                               self.target,
+                               self.replacement_codes)
+            game_manager.register_effect(effect)
+            # game_manager.battlefield.remove_bot(self.target, should_have=False)
         
 def get_random_damage(power):
     #The sum of x {0, 1} dice, where x = power
@@ -66,3 +78,22 @@ class GiveEnergyEffect(Effect):
     
     def resolve(self, game_manager):
         self.target.energy += self.amount
+
+#Effects tied to particular abilities
+class PoisonEffect(Effect):
+    def __init__(self, sources, target, amount, replacement_codes=tuple([])):
+        super().__init__(sources, target, replacement_codes)
+        self.amount = amount
+    
+    def resolve(self, game_manager):
+        hurt_bot = self.target
+        
+        hurt_bot.mod_manager.add_mod('max_hp', -self.amount, self)
+        
+        #Check if it's dead
+        #maybe move all these to GameManager
+        if hurt_bot.is_dead():
+            effect = DieEffect(self.source,
+                               hurt_bot,
+                               self.replacement_codes)
+            game_manager.register_effect(effect)

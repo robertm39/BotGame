@@ -333,15 +333,49 @@ class PoisonReplacementCode(ReplacementCode):
     #Default fits() behavior works
     
     def trigger(self, game_manager, effect):
-        hurt_bot = effect.target
-        hurt_bot.mod_manager.add_mod('max_hp', -effect.damage, self)
+        poison_effect = effects.PoisonEffect(effect.source,
+                                             effect.target,
+                                             effect.damage)
+        game_manager.register_effect(poison_effect)
+        # hurt_bot = effect.target
+        # hurt_bot.mod_manager.add_mod('max_hp', -effect.damage, self)
         
-        #Check if it's dead
-        #maybe move all these to GameManager
-        if hurt_bot.is_dead():
-            game_manager.battlefield.remove_bot(hurt_bot, should_have=False)
+        # #Check if it's dead
+        # #maybe move all these to GameManager
+        # if hurt_bot.is_dead():
+        #     game_manager.battlefield.remove_bot(hurt_bot, should_have=False)
 #make a modifier effect
 STATS_FROM_NAMES['poison'] = PoisonStat
+
+class FragileStat(SpecialStat):
+    def __init__(self, value, bot):
+        self.value = 1
+        self.bot = bot
+        self.code_1 = FragileCode(self.bot, 'Attack')
+        self.code_2 = FragileCode(self.bot, 'Damage')
+    
+    def get_codes(self):
+        return [self.code_1, self.code_2]
+
+    def get_multiplier(self):
+        return 0.25
+
+class FragileCode(Code):
+    def __init__(self, bot, spec):
+        if spec == 'Attack':
+            super().__init__([], [bot], [effects.AttackEffect])
+        elif spec == 'Damage':
+            super().__init__([bot], [], [effects.DamageEffect])
+        else:
+            raise ValueError('spec: {}'.format(spec))
+        
+        self.bot = bot
+    
+    #Default fits() behavior works
+    
+    def trigger(self, game_manager, effect):
+        effect = effects.DieEffect(self.bot, self.bot)
+        game_manager.register_effect(effect)
 
 #Implemented special stats:
 #Absorb X
@@ -353,12 +387,12 @@ STATS_FROM_NAMES['poison'] = PoisonStat
 #Tall
 #Curved Sight
 #Stealth
+#Poison: damage from this bot lowers enemies' max HP instead of damaging them
+#Fragile - dies after first attack or damage
 
 #Unimplemented special stats:
-#Poison: damage from this bot lowers enemies' max HP instead of damaging them
 #Debiliation (?): damage from this bot lowers enemies' power instead of damaging them
     
-#Fragile - dies after first attack or damage
 #Bomb - attacks own square after dieing
 #Extra Attacks X
 #Extra Builds X

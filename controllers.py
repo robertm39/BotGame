@@ -834,9 +834,8 @@ class BasicPoisonController:
             chance_random = False
         
         if chance_random:
-            #25% chance of going in a random direction
-            #actually just go in a random direction
-            if True:# randint(1, 4) == 4:
+            #random directions
+            if True:#randint(0, 1) == 1:
                 self.directions = choice(([bg.Direction.DOWN, bg.Direction.RIGHT],
                                           [bg.Direction.UP, bg.Direction.RIGHT],
                                           [bg.Direction.DOWN, bg.Direction.LEFT],
