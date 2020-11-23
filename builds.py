@@ -355,7 +355,7 @@ class FragileStat(SpecialStat):
         self.code_2 = FragileCode(self.bot, 'Damage')
     
     def get_codes(self):
-        return [self.code_1, self.code_2]
+        return [self.code_1]#, self.code_2]
 
     def multiplier(self):
         return 0.25
@@ -363,9 +363,9 @@ class FragileStat(SpecialStat):
 class FragileCode(Code):
     def __init__(self, bot, spec):
         if spec == 'Attack':
-            super().__init__([], [bot], [effects.AttackEffect])
+            super().__init__([bot], [], [effects.AttackEffect])
         elif spec == 'Damage':
-            super().__init__([bot], [], [effects.DamageEffect])
+            super().__init__([], [bot], [effects.DamageEffect])
         else:
             raise ValueError('spec: {}'.format(spec))
         
