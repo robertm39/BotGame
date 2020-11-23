@@ -357,7 +357,7 @@ class FragileStat(SpecialStat):
     def get_codes(self):
         return [self.code_1, self.code_2]
 
-    def get_multiplier(self):
+    def multiplier(self):
         return 0.25
 
 class FragileCode(Code):
@@ -376,6 +376,7 @@ class FragileCode(Code):
     def trigger(self, game_manager, effect):
         effect = effects.DieEffect(self.bot, self.bot)
         game_manager.register_effect(effect)
+STATS_FROM_NAMES['fragile'] = FragileStat
 
 #Implemented special stats:
 #Absorb X

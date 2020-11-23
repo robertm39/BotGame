@@ -534,14 +534,15 @@ def setups_test_1(battlefield):
     battlefield.add_item(es_1)
     battlefield.add_item(es_2)
     
-    con_1 = controllers.BasicController2()
+    # con_1 = controllers.BasicController2()
+    con_1 = controllers.FragileTestController()
     # con_1 = controllers.BasicController()
     # con_1 = controllers.MegaBombController()
     # con_1 = controllers.BasicPoisonController()
     
-    con_2 = controllers.BasicPoisonController()
+    # con_2 = controllers.BasicPoisonController()
     # con_2 = controllers.BasicController2()
-    # con_2 = controllers.BasicController()
+    con_2 = controllers.BasicController()
     
     bot_1, bot_2 = setups.get_start_bots(con_1, con_2, battlefield)
     battlefield.add_item(bot_1)
