@@ -337,14 +337,6 @@ class PoisonReplacementCode(ReplacementCode):
                                              effect.target,
                                              effect.damage)
         game_manager.register_effect(poison_effect)
-        # hurt_bot = effect.target
-        # hurt_bot.mod_manager.add_mod('max_hp', -effect.damage, self)
-        
-        # #Check if it's dead
-        # #maybe move all these to GameManager
-        # if hurt_bot.is_dead():
-        #     game_manager.battlefield.remove_bot(hurt_bot, should_have=False)
-#make a modifier effect
 STATS_FROM_NAMES['poison'] = PoisonStat
 
 class FragileStat(SpecialStat):
@@ -355,10 +347,10 @@ class FragileStat(SpecialStat):
         self.code_2 = FragileCode(self.bot, 'Damage')
     
     def get_codes(self):
-        return [self.code_1]#, self.code_2]
+        return [self.code_1, self.code_2]
 
     def multiplier(self):
-        return 0.25
+        return 0.2
 
 class FragileCode(Code):
     def __init__(self, bot, spec):

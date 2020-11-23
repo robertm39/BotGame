@@ -652,7 +652,8 @@ class BasicController2:
                                               movement=1,
                                               message=self.message_to_give,
                                               #spread=70,
-                                              absorb=15)
+                                              absorb=15,
+                                              tall=1)
                                               #absorb=40)
                 
                 moves[bg.MoveType.BUILD] = [build_move]
@@ -1137,11 +1138,11 @@ class FragileTestController:
                 build_coords = choice(adj_wo_bot)
                 
                 build_move = builds.BuildMove(build_coords,
-                                              max_hp=70,
-                                              power=10,
+                                              max_hp=1,
+                                              power=30,
                                               attack_range=attack_range,
                                               speed=0,
-                                              sight=4,
+                                              sight=3,
                                               energy=0,
                                               movement=1,
                                               message=self.message_to_give,

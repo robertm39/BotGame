@@ -182,7 +182,7 @@ class BotGameDisplayFrame(tk.Frame):
         return result
     
     def loop(self):
-        game_still_going = self.update_frame()
+        game_still_going, winner = self.update_frame()
         self.frame_num += 1
         print('Frame {}'.format(self.frame_num))
         
@@ -198,6 +198,8 @@ class BotGameDisplayFrame(tk.Frame):
         
         if game_still_going:
             self.after(self.frame_delay, self.loop)
+        else:
+            print('Player {} won'.format(winner))
     
     def start_loop(self):
         self.frame_num = 0
@@ -534,21 +536,30 @@ def setups_test_1(battlefield):
     battlefield.add_item(es_1)
     battlefield.add_item(es_2)
     
-    # con_1 = controllers.BasicController2()
-    con_1 = controllers.FragileTestController()
+    con_1 = controllers.BasicController2()
+    # con_1 = controllers.FragileTestController()
     # con_1 = controllers.BasicController()
     # con_1 = controllers.MegaBombController()
     # con_1 = controllers.BasicPoisonController()
     
-    # con_2 = controllers.BasicPoisonController()
+    con_2 = controllers.BasicPoisonController()
     # con_2 = controllers.BasicController2()
-    con_2 = controllers.BasicController()
+    # con_2 = controllers.BasicController()
     
     bot_1, bot_2 = setups.get_start_bots(con_1, con_2, battlefield)
     battlefield.add_item(bot_1)
     battlefield.add_item(bot_2)
 
-def main():
+def run_game(game_manager):
+    keep_going = True
+    # i = 1
+    while keep_going:
+        # print('Round {}'.format(i))
+        # i += 1
+        keep_going, winner = game_manager.advance()
+    return winner
+
+def gui_main():
     root = tk.Tk()
     root.geometry('720x720+400+30')
     
@@ -558,16 +569,6 @@ def main():
     
     game_manager = bot_game.GameManager(battlefield)
     
-    #You can only add bots to the battlefield after the game_manager is made
-    # test_1(battlefield)
-    # give_life_test_1(battlefield)
-    # heal_test_1(battlefield)
-    # absorb_test_1(battlefield)
-    # absorb_test_2(battlefield)
-    # spread_test_1(battlefield)
-    # burn_test_1(battlefield)
-    # burn_and_spread_test_1(battlefield)
-    # stealth_test_1(battlefield)
     setups_test_1(battlefield)
     
     frame = BotGameDisplayFrame(root,
@@ -581,6 +582,17 @@ def main():
     
     frame.start_loop()
     root.mainloop()
+
+def text_main():
+    battlefield = bot_game.Battlefield(16, 16)
+    game_manager = bot_game.GameManager(battlefield)
+    setups_test_1(battlefield)
+    
+    winner = run_game(game_manager)
+    print('Player {} won'.format(winner))
+
+def main():
+    text_main()
 
 if __name__ == '__main__':
     main()

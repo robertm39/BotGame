@@ -284,10 +284,13 @@ class Battlefield:
             for y in range(self.height):
                 self.map[x, y] = list()
     
-    def has_player_won(self):
+    def get_winner(self):
         players = list(set([bot.player for bot in self.bots]))
         # print(players)
-        return len(players) == 1
+        if len(players) == 1:
+            return players[0]
+        return False
+        #return len(players) == 1
     
     def at(self, coords):
         return self.map.get(coords, list())
@@ -1410,9 +1413,10 @@ class GameManager:
         """
         Advance the game by one turn.
         """
-        if self.battlefield.has_player_won():
+        winner = self.battlefield.get_winner()
+        if winner:
             print('game over')
-            return False
+            return False, winner
         
         # self.ready_effects()
         self.upkeep()
@@ -1428,7 +1432,7 @@ class GameManager:
             self.process_funcs[move_type](moves_from_bots)
             self.resolve_effects()
         
-        return True
+        return True, None
 
 import builds
 
