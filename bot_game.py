@@ -302,6 +302,7 @@ class Battlefield:
     def bots_at(self, coords):
         items_at = self.at(coords)
         return [b for b in items_at if isinstance(b, Bot)]
+        # return [b for b in items_at if b in self.bots]
     
     def get_items(self):
         return sum(self.map.values(), [])
@@ -381,15 +382,13 @@ class Battlefield:
             bot [Bot]: The bot to return the visible coords of.
         """
         #Start with the robot's square
-        #expand outwards in 'straight' lines, not expanding into squares
+        #expand outwards in 'straight' lines, not expanding out of squares
         #with a Tall bot
         #any line that goes between two points in the minimal distance is
         #straight, even if it turns
         
         center_coords = c_coords if c_coords else bot.coords
-        # sight = bot.sight if bot else s_range
         sight = s_range if s_range else bot.sight
-        # curved = hasattr(bot, 'curved_sight') if bot else 
         curved = curved_s or hasattr(bot, 'curved_sight')
         
         result = [center_coords]
@@ -402,7 +401,6 @@ class Battlefield:
                 directions = list(Direction) if curved else\
                              directions_for_coords(d_coords)
                 for d in directions:
-                    # print(d)
                     t_coords = coords_in_direction(coords, d)
                     if t_coords in result:
                         continue
@@ -1087,20 +1085,27 @@ class GameManager:
         had_orders = list()
         moved = list()
         cramped = set()
-        
+        # print('moving')
         for bot, moves in moves_from_bots.items():
             #The bot has no more move orders left
             if not len(moves) > i:
+                # print('moves over at {}'.format(i))
                 continue
             
             #The bot has no more movement left
             if not bot.movement > i:
+                # print('movement done at {}'.format(i))
                 continue
+            
+            # print('')
             
             had_orders.append(bot)
             move = moves[i]
             
+            # print('move direction: {}'.format(move.direction))
+            
             t_coords = coords_in_direction(bot.coords, move.direction)
+            # print('t_coords: {}'.format(t_coords))
             
             #If the robot is trying to move out of bounds, it can't
             if not self.battlefield.is_in_bounds(t_coords):
@@ -1463,6 +1468,7 @@ class ModifierManager:
     def __init__(self, parent_bot):
         self.parent_bot = parent_bot
         self.mods = dict()
+        self.cache = dict()
         
     def add_mod(self, stat, amount, source):
         """
@@ -1487,6 +1493,9 @@ class ModifierManager:
             for_stat[source] += amount
         
         self.parent_bot.notify_mod_added(stat, amount)
+        
+        #Update total value
+        self.cache[stat] = sum([m for s, m in self.mods.get(stat, {}).items()])
     
     def remove_source(self, source):
         """
@@ -1511,6 +1520,8 @@ class ModifierManager:
         Return:
             int: The total modifier for the given stat.
         """
+        return 0
+        # return self.cache.get(stat, 0)
         return sum([m for s, m in self.mods.get(stat, {}).items()])
     
 class Bot:
@@ -1545,7 +1556,7 @@ class Bot:
         self.controller = controller
         
         self.special_stats_dict = special_stats_dict.copy()
-        self.special_stats = list()
+        self.special_stats = dict()
         
         #Modifiers to stats
         #effects use these instead of directly changing them
@@ -1553,49 +1564,60 @@ class Bot:
         
         self.codes = list()
         
+        self.cached_view = WindowBotView(self)
+        
+        # print('self.hp: {}'.format(self.hp))
+        # print('view hp: {}'.format(self.cached_view.hp))
+        
         for stat, val in special_stats_dict.items():
             self.__setattr__(stat, val)
             special_stat = builds.STATS_FROM_NAMES[stat](val, self)
-            self.special_stats.append(special_stat)
+            # print(stat)
+            self.special_stats[stat] = special_stat
             self.codes.extend(special_stat.get_codes())
             
-            #The overrides system allows special stats to modify the behavior
-            #of the bot
-            #This should let me move more stat code to where the stats are
-            #defined
-            for name in dir(special_stat):
-                if name[0] == '_':
-                    continue
-                # print('name: {}'.format(name))
-                if not name in OVERRIDABLE:
-                    continue
-                override = getattr(special_stat, name)
-                if not callable(override):
-                    continue
-                if name in self._overrides:
-                    print('conflicting override: {}'.format(name))
-                self._overrides[name] = override
+            # #The overrides system allows special stats to modify the behavior
+            # #of the bot
+            # #This should let me move more stat code to where the stats are
+            # #defined
+            # for name in dir(special_stat):
+            #     if name[0] == '_':
+            #         continue
+            #     # print('name: {}'.format(name))
+            #     if not name in OVERRIDABLE:
+            #         continue
+            #     override = getattr(special_stat, name)
+            #     if not callable(override):
+            #         continue
+            #     if name in self._overrides:
+            #         print('conflicting override: {}'.format(name))
+            #     self._overrides[name] = override
     
     #__getattr__ is only called if there aren't any matching attributes
-    def __getattribute__(self, name):
-        if name[0] == '_':
-            return super().__getattribute__(name)
+    # def __getattribute__(self, name):
+    #     if name[0] == '_':
+    #         return super().__getattribute__(name)
         
-        if name in self._overrides:
-            return self._overrides[name]
+    #     if name in self._overrides:
+    #         return self._overrides[name]
         
-        return super().__getattribute__(name)
+    #     return super().__getattribute__(name)
+    
+    # def __getattr__(self, name):
+    #     if name in builds.STATS_FROM_NAMES:
+    #         return 0
+    #     raise AttributeError('no attribute: {}'.format(name))
     
     def get_stat(self, stat):
-        mod = self.mod_manager[stat]
-        return getattr(self, stat) + mod
+        # mod = self.mod_manager[stat]
+        return getattr(self, stat)# + mod
     
-    def notify_mod_added(self, stat, amount):
-        if stat == 'max_hp':
-            self.hp = min(self.hp, self.get_stat('max_hp'))
+    # def notify_mod_added(self, stat, amount):
+    #     if stat == 'max_hp':
+    #         self.hp = min(self.hp, self.get_stat('max_hp'))
     
     def new_turn(self, game_manager):
-        for stat in self.special_stats:
+        for _, stat in self.special_stats.items():
             stat.new_turn(game_manager)
     
     def _increase_hp(self, amount):
@@ -1705,20 +1727,25 @@ class Bot:
         Return:
             BotView: The view of the bot that will be given to controllers.
         """
-        result = BotView(coords=self.coords,
-                         max_hp=self.get_stat('max_hp'),
-                         hp=self.hp,
-                         power=self.get_stat('power'),
-                         attack_range=self.get_stat('attack_range'),
-                         speed=self.get_stat('speed'),
-                         sight=self.get_stat('sight'),
-                         energy=self.energy,
-                         movement=self.get_stat('movement'),
-                         player=self.player,
-                         message=self.message,
-                         **self.special_stats_dict)
+        if hasattr(self, 'stealth'):
+            if not (self.special_stats['stealth'].moved or bot.player == self.player):
+                return None
         
-        return result
+        return self.cached_view
+        # result = BotView(coords=self.coords,
+        #                   max_hp=self.get_stat('max_hp'),
+        #                   hp=self.hp,
+        #                   power=self.get_stat('power'),
+        #                   attack_range=self.get_stat('attack_range'),
+        #                   speed=self.get_stat('speed'),
+        #                   sight=self.get_stat('sight'),
+        #                   energy=self.energy,
+        #                   movement=self.get_stat('movement'),
+        #                   player=self.player,
+        #                   message=self.message,
+        #                   **self.special_stats_dict)
+                
+        # return result
     
     def view(self, bot):
         return self._view(bot)
@@ -1765,6 +1792,49 @@ class Bot:
                'movement={},\n'.format(movement) + \
                'player={},\n'.format(self.player) + \
                'message={}'.format(self.message)
+
+def get_view_func(obj, names):
+    return lambda name: getattr(obj, name) if name in names else None
+
+BOT_VIEW_NAMES = ['coords',
+                  'max_hp',
+                  'hp',
+                  'power',
+                  'attack_range',
+                  'speed',
+                  'sight',
+                  'energy',
+                  'movement',
+                  'player',
+                  'message']
+BOT_VIEW_NAMES += list(builds.STATS_FROM_NAMES)
+BOT_VIEW_NAMES = tuple(BOT_VIEW_NAMES)
+# print('BOT_VIEW_NAMES:')
+# print(BOT_VIEW_NAMES)
+
+# from random import randint
+
+class WindowBotView:
+    def __init__(self, bot):
+        # print('starting')
+        self.view_func = get_view_func(bot, BOT_VIEW_NAMES)
+        self.type = 'Bot'
+        # print('view_func initialized')
+        self._initialized = True
+        # print('Done')
+    
+    # def __setattr__(self, name, val):
+    #     if hasattr(self, '_initialized'):
+    #         if name[0] != '_':
+    #             raise RuntimeError('cannot change value after initialized')
+    #     super().__setattr__(name, val)
+    
+    def __getattr__(self, name):
+        # print(name)
+        # if randint(0, 10) == 10:
+        #     raise AssertionError()
+        
+        return self.view_func(name)
 
 class BotView:
     def __init__(self,

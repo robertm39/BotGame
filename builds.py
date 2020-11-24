@@ -333,10 +333,20 @@ class PoisonReplacementCode(ReplacementCode):
     #Default fits() behavior works
     
     def trigger(self, game_manager, effect):
-        poison_effect = effects.PoisonEffect(effect.source,
-                                             effect.target,
-                                             effect.damage)
-        game_manager.register_effect(poison_effect)
+        target = effect.target
+        # poison_effect = effects.PoisonEffect(effect.source,
+        #                                      effect.target,
+        #                                      effect.damage)
+        # game_manager.register_effect(poison_effect)
+        target.max_hp -= 1
+        if target.hp > target.max_hp:
+            target.hp = target.max_hp
+        
+        if target.is_dead():
+            effect = effects.DieEffect(effect.source,
+                                       target,
+                                       effect.replacement_codes + tuple([self]))
+            game_manager.register_effect(effect)
 STATS_FROM_NAMES['poison'] = PoisonStat
 
 class FragileStat(SpecialStat):

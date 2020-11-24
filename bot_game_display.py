@@ -10,6 +10,7 @@ import tkinter as tk
 import bot_game
 import controllers
 # from tests import get_bot
+import random
 import setups
 
 class BotGameDisplayFrame(tk.Frame):
@@ -530,7 +531,7 @@ def stealth_test_1(battlefield):
     battlefield.add_bot(fight_bot)
 
 def setups_test_1(battlefield):
-    setups.make_random_energy_sources(battlefield, num=12, border=3)
+    setups.make_random_energy_sources(battlefield, num=50, border=3)
     
     es_1, es_2 = setups.get_start_energy_sources(10, battlefield)
     battlefield.add_item(es_1)
@@ -560,12 +561,13 @@ def run_game(game_manager):
     return winner
 
 def gui_main():
+    # random.seed(2)
     root = tk.Tk()
     root.geometry('720x720+400+30')
     
     #Full size is 64x64
     #But I want to see the whole thing for testing
-    battlefield = bot_game.Battlefield(16, 16)
+    battlefield = bot_game.Battlefield(16, 64)
     
     game_manager = bot_game.GameManager(battlefield)
     
@@ -575,8 +577,8 @@ def gui_main():
                                 game_manager,
                                 view_width=700,
                                 view_height=700,
-                                square_size=20,
-                                font_size=8,
+                                square_size=10,
+                                font_size=6,
                                 frame_delay=1)
     tk.app = frame
     
@@ -584,7 +586,8 @@ def gui_main():
     root.mainloop()
 
 def text_main():
-    battlefield = bot_game.Battlefield(16, 16)
+    random.seed(0)
+    battlefield = bot_game.Battlefield(32, 32)
     game_manager = bot_game.GameManager(battlefield)
     setups_test_1(battlefield)
     
@@ -592,7 +595,8 @@ def text_main():
     print('Player {} won'.format(winner))
 
 def main():
-    text_main()
+    gui_main()
+    # text_main()
 
 if __name__ == '__main__':
     main()
